@@ -5,6 +5,10 @@ Checks the actuality of the Pod images in a kubernetes cluster
  - Python 3
  - Local running kubectl with access to your kubernetes cluster
 
+ ## limits
+ - Does not check the age of Image or pod
+ - does not check gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
+
 ## Usage
 usage: klusterstatus.py [-h] [-v] [-n NAMESPACES]
 
