@@ -20,11 +20,6 @@ UNDERLINE = '\033[4m'
 DOCKER_TOKEN=''
 
 def checkImage_quayio(image, imageID):
-    '''
-    https://quay.io/api/v1/repository/jetstack/cert-manager-webhook/tag/
-    https://quay.io/api/v1/repository/jetstack/cert-manager-webhook/tag/?limit=100&page=4&onlyActiveTags=true
-    docker-pullable://quay.io/jetstack/cert-manager-controller@sha256:916ad11088651e28923fa6891ac5c27790ba33f6dcc8ca34f223afa6b55f7b54
-    '''
     [(repository,digest)]  = re.findall(r'docker-pullable://quay\.io/([\w\/-]+)@(sha256:\w+)', imageID)
     [(tag)] = re.findall(r'[\w\/-]+:([\w\.-]+)', image)
 
