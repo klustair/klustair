@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
-    parser.add_argument("-n", "--namespaces", required=False, help="Path to configfile")
+    parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
 
     args = parser.parse_args()
     if args.verbose:
