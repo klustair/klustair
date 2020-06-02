@@ -7,6 +7,7 @@ import logging as log
 import argparse
 import os
 from datetime import datetime
+import pprint
 
 HEADER = '\033[95m'
 OKBLUE = '\033[94m'
@@ -18,6 +19,56 @@ BOLD = '\033[1m'
 UNDERLINE = '\033[4m'
 
 DOCKER_TOKEN=''
+
+result = {
+    'pods': [],
+}
+
+def printStatus(item, status):
+    if status == 'OK':
+        print(OKGREEN+'OK   : '+ENDC+item)
+    elif status == 'FAIL':
+        print(FAIL+'FAIL : '+ENDC+item)
+
+def check_securityContext(containers,capabilitiesWhitelist):
+    for container in containers:
+        container['checkresults'] = []
+
+        if 'securityContext' not in container: 
+            continue
+
+        if 'allowPrivilegeEscalation' in container['securityContext']: 
+            checkresult = {
+                'name': 'allowPrivilegeEscalation',
+                'description': 'Do not allow privilege escalation'
+            }
+            if container['securityContext']['allowPrivilegeEscalation'] == False:
+                checkresult['result']=1
+                log.debug('allowPrivilegeEscalation=False : OK')
+            else:
+                checkresult['result']=0
+                log.debug('allowPrivilegeEscalation=False : FAIL')
+            container['checkresults'].append(checkresult)
+
+        if 'capabilities' in container['securityContext']:
+            checkresult = {
+                'name': 'allowPrivilegeEscalation',
+                'description': 'capabilities drop ALL',
+                'result': 1
+            }
+            if 'ALL' in container['securityContext']['capabilities']['drop']:
+                checkresult['result']=1
+                log.debug('capabilities drop ALL : OK')
+            else:
+                checkresult['result']=0
+                log.debug('capabilities drop ALL : FAIL')
+            container['checkresults'].append(checkresult)
+            
+            log.debug('capabilities: ')
+            for capability in container['securityContext']['capabilities']['add']:
+                log.debug(' - '+capability)
+                if capability not in capabilitiesWhitelist:
+                    printStatus('capabilitiy "'+capability+'" not allowed to add', 'FAIL')
 
 def checkImage_quayio(image, imageID):
     [(repository,digest)]  = re.findall(r'docker-pullable://quay\.io/([\w\/-]+)@(sha256:\w+)', imageID)
@@ -35,7 +86,7 @@ def checkImage_quayio(image, imageID):
         if tagMeta['name'] == tag:
             manifest_digest = tagMeta['manifest_digest']
             last_modified = tagMeta['last_modified']
-    print("Image last_modified: {}".format(last_modified))
+    log.debug("Image last_modified: {}".format(last_modified))
 
     manifestUrl = "https://quay.io/api/v1/repository/{}/manifest/{}".format(repository, manifest_digest)
     log.debug("manifestUrl: {}".format(manifestUrl))
@@ -53,17 +104,26 @@ def checkImage_quayio(image, imageID):
         for image in manifests['manifests']:
             if image['platform']['architecture'] == 'amd64':
                 if digest ==  image['digest']:
-                    print(OKGREEN+'======> OK '+ENDC)
+                    log.debug(OKGREEN+'======> OK '+ENDC)
                 else:
-                    print(FAIL+'======> UPDATE '+ENDC)
-                    print('remote: '+image['digest'])
-                    print('local : '+digest)
+                    log.debug(FAIL+'======> UPDATE '+ENDC)
+                    log.debug('remote: '+image['digest'])
+                    log.debug('local : '+digest)
 
-def checkImage_dockerhub(image, imageID, container_last_started):
+def checkImage_dockerhub(containerStatus):
 
-    [(repository,digest)]  = re.findall(r'docker-pullable://([\w\/-]+)@(sha256:\w+)', imageID)
+    checkresult = {
+        'name': 'imageFreshnes',
+        'description': 'latest version of this image',
+        'result': 1
+    }
 
-    [(repository,tag)] = re.findall(r'([\w\/-]+):([\w\.-]+)', image)
+    if not  containerStatus['ready']:
+        print("WARNING: Container not in ready state. Aborting image checks on running container")
+        return
+    [(repository,digest)]  = re.findall(r'docker-pullable://([\w\/-]+)@(sha256:\w+)', containerStatus['imageID'])
+
+    [(repository,tag)] = re.findall(r'([\w\/-]+):([\w\.-]+)', containerStatus['image'])
 
     if not re.search('/', repository):
         repository = 'library/'+repository
@@ -78,21 +138,24 @@ def checkImage_dockerhub(image, imageID, container_last_started):
         log.error("ERROR: cant load JSON")
         return
 
-    if 'last_updated' in remoteimage:
-        print("Image last_updated  : {}".format(remoteimage['last_updated']))
+    if 'last_updated' in remoteimage and 'running' in containerStatus['state']:
+        log.debug("Image last_updated  : {}".format(remoteimage['last_updated']))
         image_last_updated = datetime.strptime(remoteimage['last_updated'], "%Y-%m-%dT%H:%M:%S.%fZ")
-        is_latestimage = image_last_updated < container_last_started
+        is_latestimage = image_last_updated < containerStatus['state']['running']['startedAt']
 
     if 'images' in remoteimage:
         for image in remoteimage['images']:
             if image['architecture'] == 'amd64' and image['os'] == 'linux':
                 if digest == image['digest'] or is_latestimage:
-                    print(OKGREEN+'======> OK '+ENDC)
+                    log.debug(OKGREEN+'======> OK '+ENDC)
+                    checkresult['result'] = 1
                 else:
-                    print(FAIL+'======> UPDATE '+ENDC)
-                    print('remote: '+image['digest'])
-                    print('local : '+digest)
-                    
+                    checkresult['result'] = 0
+                    log.debug(FAIL+'======> UPDATE '+ENDC)
+                    log.debug('remote: '+image['digest'])
+                    log.debug('local : '+digest)
+
+    containerStatus['checkresults'].append(checkresult)
 
 def login_dockerub():
     global DOCKER_TOKEN
@@ -114,22 +177,45 @@ def login_dockerub():
             return
         log.debug(DOCKER_TOKEN)
 
-if __name__ == '__main__':
+def normalize_containerstatus(containers, containerStatuses):
+    containers_r = []
+    for container in containers: 
+        for containerStatus in containerStatuses:
+            if containerStatus['image'] == container['image']:
+                container.update(containerStatus)
+        containers_r.append(container)
+        
+    return containers_r
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
-    parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
+def checkImage(containers): 
+    for container in containers:
 
-    args = parser.parse_args()
-    if args.verbose:
-        log.basicConfig(format='%(levelname)s:%(message)s', level=log.DEBUG)
+        print("checking Container image: {}".format(container['image']))
+        log.debug("Container imageID: {}".format(container['imageID']))
+        log.debug("Container name: {}".format(container['name']))
 
-    namespacesWhitelist = []
-    if args.namespaces:
-        namespacesWhitelist = args.namespaces.split(',')
+        if 'running' in container['state']:
+            log.debug("Container started at: {}".format(container['state']['running']['startedAt']))
+            container_last_started = datetime.strptime(container['state']['running']['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+            container['state']['running']['startedAt'] = container_last_started
+        
+        if re.search(r'gcr.io',container['image']):
+            log.debug("repository: gcr.io")
+            container['repository'] = ' gcr.io'
+        elif re.search(r'quay.io',container['image']):
+            log.debug("repository: quay.io")
+            container['repository'] = 'quay.io'
+            checkImage_quayio(container['image'], container['imageID'])
+        else:
+            container['repository'] = 'dockerhub'
+            checkImage_dockerhub(container)
+
+
+def run():
+    global result
 
     login_dockerub()
-    
+
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
     for namespace in namespaces['items']:
@@ -140,31 +226,70 @@ if __name__ == '__main__':
         if namespacesWhitelist and nsName not in namespacesWhitelist: 
             continue
 
-        print("Namespace: {} ------------------------------".format(nsName))
+        print("checking Namespace: {} ------------------------------".format(nsName))
         log.debug("Namespace UID: {}".format(nsUid))
         log.debug("Namespace creation: {}".format(nsCreationTimestamp))
-        print("")
         
         pods = json.loads(subprocess.run(["kubectl", "get", "pods", "-n", nsName, "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         for pod in pods['items']:
-            print("Pod name: {}".format(pod['metadata']['name']))
+            print("checking Pod name: {}".format(pod['metadata']['name']))
             log.debug("Pod creationTimestamp: {}".format(pod['metadata']['creationTimestamp']))
-            log.debug("Pod UID: {}".format(pod['metadata']['uid']))
-            for containerStatus in pod['status']['containerStatuses']:
-                print("Container image: {}".format(containerStatus['image']))
-                log.debug("Container imageID: {}".format(containerStatus['imageID']))
-                log.debug("Container name: {}".format(containerStatus['name']))
-
-                if 'running' in containerStatus['state']:
-                    print("Container started at: {}".format(containerStatus['state']['running']['startedAt']))
-                    container_last_started = datetime.strptime(containerStatus['state']['running']['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-                
-                if re.search(r'gcr.io',containerStatus['image']):
-                    log.debug("repository: gcr.io")
-                elif re.search(r'quay.io',containerStatus['image']):
-                    log.debug("repository: quay.io")
-                    checkImage_quayio(containerStatus['image'], containerStatus['imageID'])
-                else:
-                    checkImage_dockerhub(containerStatus['image'], containerStatus['imageID'], container_last_started)
             
-                print("")
+            containers_r = normalize_containerstatus(pod['spec']['containers'] , pod['status']['containerStatuses'])
+
+            check_securityContext(containers_r, capabilitiesWhitelist)
+            checkImage(containers_r)
+            pod_r = {
+                'name': pod['metadata']['name'],
+                'namespace': nsName,
+                'creationTimestamp': datetime.strptime(pod['metadata']['creationTimestamp'], "%Y-%m-%dT%H:%M:%SZ"),
+                'containers': containers_r
+            }
+            result['pods'].append(pod_r)
+            print("")
+
+def display_result():
+    global result
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+    status = [
+        FAIL+'ERROR'+ENDC,
+        OKGREEN+'OK'+ENDC,
+        OKBLUE+'UNKNOWN'+ENDC
+    ]
+
+    #pprint.pprint(result)
+    for pod in result['pods']:
+        for container in pod['containers']:
+            print(container['name'])
+            for checkresult in container['checkresults']:
+                print('  {} : {}'.format(checkresult['description'].ljust(35), status[checkresult['result']]))
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
+    parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
+    parser.add_argument("-c", "--capabilities", required=False, help="Coma separated whitelist of capabilities to check")
+
+    args = parser.parse_args()
+    if args.verbose:
+        log.basicConfig(format='%(levelname)s:%(message)s', level=log.DEBUG)
+
+    namespacesWhitelist = []
+    if args.namespaces:
+        namespacesWhitelist = args.namespaces.split(',')
+
+    capabilitiesWhitelist = []
+    if args.capabilities:
+        capabilitiesWhitelist = args.capabilities.split(',')
+
+    run()
+    display_result()
