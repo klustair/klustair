@@ -65,10 +65,22 @@ def check_securityContext(containers,capabilitiesWhitelist):
             container['checkresults'].append(checkresult)
             
             log.debug('capabilities: ')
-            for capability in container['securityContext']['capabilities']['add']:
-                log.debug(' - '+capability)
-                if capability not in capabilitiesWhitelist:
-                    printStatus('capabilitiy "'+capability+'" not allowed to add', 'FAIL')
+            if 'add' in container['securityContext']['capabilities']:
+                for capability in container['securityContext']['capabilities']['add']:
+                    log.debug(' - '+capability)
+                    if capability not in capabilitiesWhitelist:
+                        container['checkresults'].append({
+                            'name': 'toMuchCapability',
+                            'description': 'capabilitiy "'+capability+'" not whitelisted to add',
+                            'result': 0
+                        })
+            else:
+                container['checkresults'].append({
+                    'name': 'noExplicitCapabilitie',
+                    'description': 'no explicit add of capabilities',
+                    'result': 0
+                })
+
 
 def checkImage_quayio(image, imageID):
     [(repository,digest)]  = re.findall(r'docker-pullable://quay\.io/([\w\/-]+)@(sha256:\w+)', imageID)
@@ -110,7 +122,7 @@ def checkImage_quayio(image, imageID):
                     log.debug('remote: '+image['digest'])
                     log.debug('local : '+digest)
 
-def checkImage_dockerhub(containerStatus):
+def checkImage_dockerhub(container):
 
     checkresult = {
         'name': 'imageFreshnes',
@@ -118,12 +130,17 @@ def checkImage_dockerhub(containerStatus):
         'result': 1
     }
 
-    if not  containerStatus['ready']:
+    if not  container['ready']:
         print("WARNING: Container not in ready state. Aborting image checks on running container")
+        container['checkresults'].append({
+            'name': 'containerNotRunning',
+            'description': 'Container not in ready state. Aborting image checks on running container',
+            'result': 2
+        })
         return
-    [(repository,digest)]  = re.findall(r'docker-pullable://([\w\/-]+)@(sha256:\w+)', containerStatus['imageID'])
+    [(repository,digest)]  = re.findall(r'docker-pullable://([\w\/-]+)@(sha256:\w+)', container['imageID'])
 
-    [(repository,tag)] = re.findall(r'([\w\/-]+):([\w\.-]+)', containerStatus['image'])
+    [(repository,tag)] = re.findall(r'([\w\/-]+):([\w\.-]+)', container['image'])
 
     if not re.search('/', repository):
         repository = 'library/'+repository
@@ -138,10 +155,10 @@ def checkImage_dockerhub(containerStatus):
         log.error("ERROR: cant load JSON")
         return
 
-    if 'last_updated' in remoteimage and 'running' in containerStatus['state']:
+    if 'last_updated' in remoteimage and 'running' in container['state']:
         log.debug("Image last_updated  : {}".format(remoteimage['last_updated']))
         image_last_updated = datetime.strptime(remoteimage['last_updated'], "%Y-%m-%dT%H:%M:%S.%fZ")
-        is_latestimage = image_last_updated < containerStatus['state']['running']['startedAt']
+        is_latestimage = image_last_updated < container['state']['running']['startedAt']
 
     if 'images' in remoteimage:
         for image in remoteimage['images']:
@@ -155,7 +172,7 @@ def checkImage_dockerhub(containerStatus):
                     log.debug('remote: '+image['digest'])
                     log.debug('local : '+digest)
 
-    containerStatus['checkresults'].append(checkresult)
+    container['checkresults'].append(checkresult)
 
 def login_dockerub():
     global DOCKER_TOKEN
@@ -191,14 +208,17 @@ def checkImage(containers):
     for container in containers:
 
         print("checking Container image: {}".format(container['image']))
-        log.debug("Container imageID: {}".format(container['imageID']))
         log.debug("Container name: {}".format(container['name']))
 
-        if 'running' in container['state']:
+        if 'state' in container and 'running' in container['state']:
             log.debug("Container started at: {}".format(container['state']['running']['startedAt']))
             container_last_started = datetime.strptime(container['state']['running']['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
             container['state']['running']['startedAt'] = container_last_started
         
+        if 'imageID' not in container:
+            continue
+
+        log.debug("Container imageID: {}".format(container['imageID']))
         if re.search(r'gcr.io',container['image']):
             log.debug("repository: gcr.io")
             container['repository'] = ' gcr.io'
@@ -225,6 +245,8 @@ def run():
 
         if namespacesWhitelist and nsName not in namespacesWhitelist: 
             continue
+        if namespacesBlacklist and nsName in namespacesBlacklist: 
+            continue
 
         print("checking Namespace: {} ------------------------------".format(nsName))
         log.debug("Namespace UID: {}".format(nsUid))
@@ -238,7 +260,9 @@ def run():
             containers_r = normalize_containerstatus(pod['spec']['containers'] , pod['status']['containerStatuses'])
 
             check_securityContext(containers_r, capabilitiesWhitelist)
-            checkImage(containers_r)
+            #checkImage(containers_r)
+            get_anchoreVulnerabilities(containers_r)
+
             pod_r = {
                 'name': pod['metadata']['name'],
                 'namespace': nsName,
@@ -248,7 +272,47 @@ def run():
             result['pods'].append(pod_r)
             print("")
 
-def display_result():
+def get_anchoreVulnerabilities(containers):
+    for container in containers:
+        pprint.pprint(container['image'])
+        #anchore-cli --json --u admin --p foobar image vuln gcr.io/google_samples/k8szk:v3 all
+        vulnerabilities = subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "vuln", container['image'], "all"], stdout=subprocess.PIPE).stdout.decode('utf-8')
+        vuln_json = json.loads(vulnerabilities)
+
+
+        vulnsum = {
+            'High': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Medium': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Low': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Negligible': {
+                'total': 0,
+                'fixed': 0
+            }
+        }
+        #pprint.pprint(vuln_json)
+        if 'message' in vuln_json and vuln_json['message'] == 'cannot use input image string (no discovered imageDigest)':
+            print('not in anchore yet')
+        else:
+            for vuln in vuln_json['vulnerabilities']:
+                vulnsum[vuln['severity']]['total'] += 1
+                if vuln['fix'] != 'None':
+                    vulnsum[vuln['severity']]['fixed'] += 1
+
+        container['vulnsum'] = vulnsum
+        
+        container['vulnerabilies'] = vuln_json
+
+
+def display_cliresult():
     global result
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -260,7 +324,7 @@ def display_result():
     UNDERLINE = '\033[4m'
 
     status = [
-        FAIL+'ERROR'+ENDC,
+        FAIL+'FAIL'+ENDC,
         OKGREEN+'OK'+ENDC,
         OKBLUE+'UNKNOWN'+ENDC
     ]
@@ -268,16 +332,23 @@ def display_result():
     #pprint.pprint(result)
     for pod in result['pods']:
         for container in pod['containers']:
+            print("")
             print(container['name'])
             for checkresult in container['checkresults']:
                 print('  {} : {}'.format(checkresult['description'].ljust(35), status[checkresult['result']]))
+
+            print('  '+UNDERLINE+'Vulnerabilies:                               '+ENDC)
+            for severity, numbers in container['vulnsum'].items():
+                print('    {} : {}/{}'.format(severity.ljust(33), numbers['total'], numbers['fixed']))
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
+    parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-c", "--capabilities", required=False, help="Coma separated whitelist of capabilities to check")
+    parser.add_argument("-o", "--output", default='cli', choices=['cli', 'json'], help="report format")
 
     args = parser.parse_args()
     if args.verbose:
@@ -287,9 +358,20 @@ if __name__ == '__main__':
     if args.namespaces:
         namespacesWhitelist = args.namespaces.split(',')
 
+    namespacesBlacklist = []
+    if args.namespacesblacklist:
+        namespacesBlacklist = args.namespacesblacklist.split(',')
+
     capabilitiesWhitelist = []
     if args.capabilities:
         capabilitiesWhitelist = args.capabilities.split(',')
 
     run()
-    display_result()
+
+    if args.output == 'cli':
+        display_cliresult()
+    elif args.output == 'json':
+        pprint.pprint(result)
+        #print(json.dumps(result))
+    else:
+        print('')
