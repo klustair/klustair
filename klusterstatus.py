@@ -70,10 +70,17 @@ def check_securityContext(containers,capabilitiesWhitelist):
                     log.debug(' - '+capability)
                     if capability not in capabilitiesWhitelist:
                         container['checkresults'].append({
-                            'name': 'toMuchCapability',
+                            'name': 'capabilityWhitelist',
                             'description': 'capabilitiy "'+capability+'" not whitelisted to add',
                             'result': 0
                         })
+                    else:
+                        container['checkresults'].append({
+                            'name': 'capabilityWhitelist',
+                            'description': 'capabilitiy "'+capability+'" whitelisted to add',
+                            'result': 1
+                        })
+
             else:
                 container['checkresults'].append({
                     'name': 'noExplicitCapabilitie',
