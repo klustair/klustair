@@ -10,16 +10,22 @@ Checks the actuality of the Pod images in a kubernetes cluster
  - does not check gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
 
 ## Usage
-usage: klusterstatus.py [-h] [-v] [-n NAMESPACES]
+usage: klusterstatus.py [-h] [-v] [-n NAMESPACES] [-N NAMESPACESBLACKLIST]
+                        [-c CAPABILITIES] [-o {cli,json}]
 
-optional arguments:\
-  -h, --help            show this help message and exit\
-  -v, --verbose         increase output verbosity\
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         increase output verbosity
   -n NAMESPACES, --namespaces NAMESPACES
                         Coma separated whitelist of Namespaces to check
+  -N NAMESPACESBLACKLIST, --namespacesblacklist NAMESPACESBLACKLIST
+                        Coma separated blacklist of Namespaces to skip
+  -c CAPABILITIES, --capabilities CAPABILITIES
+                        Coma separated whitelist of capabilities to check
+  -o {cli,json}, --output {cli,json}
+                        report format
 
 To check private Dockerub repositorys set export your credentials environment variables.
-
 ```
 export DOCKER_USER=myfancyuser
 export DOCKER_PASS=123456
@@ -27,20 +33,30 @@ export DOCKER_PASS=123456
 
 ## Result
 ```
-./klusterstatus.py
-Namespace: cattle-system ------------------------------
+./klusterstatus.py -n solr -c NET_BIND_SERVICE 
 
-Pod name: cattle-cluster-agent-85c4f7d47d-jhxnp
-Container image: rancher/rancher-agent:v2.3.6
-Container started at: 2020-05-18T11:55:45Z
-Image last_updated  : 2020-03-31T01:07:27.147795Z
-======> OK
+zookeeper
+  Do not allow privilege escalation   : OK
+  capabilities drop ALL               : OK
+  Vulnerabilies:                               
+    High                              : 13/13
+    Medium                            : 267/233
+    Low                               : 193/107
+    Negligible                        : 100/4
 
-Pod name: cattle-node-agent-4sj6f
-Container image: rancher/rancher-agent:v2.3.6
-Container started at: 2020-05-18T11:56:22Z
-Image last_updated  : 2020-03-31T01:07:27.147795Z
-======> OK
+solr
+  Do not allow privilege escalation   : OK
+  capabilities drop ALL               : OK
+  Vulnerabilies:                               
+    High                              : 0/0
+    Medium                            : 0/0
+    Low                               : 0/0
+    Negligible                        : 0/0
+```
 
-....
+
+## Start Anchore locally
+```
+curl https://docs.anchore.com/current/docs/engine/quickstart/docker-compose.yaml > docker-compose-anchore.yaml
+docker-compose -f docker-compose-anchore.yaml up -d 
 ```
