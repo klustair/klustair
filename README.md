@@ -9,6 +9,24 @@ Checks the actuality of the Pod images in a kubernetes cluster
  - Does not check the age of Image or pod
  - does not check gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
 
+## build
+```
+cp .env.example .env
+vim .env
+docker compose build
+```
+
+## run
+```
+cp .env.example .env
+vim .env
+docker-compose up -d 
+``` 
+or 
+```
+docker-compose up -d -e PATH_LOCAL_KUBECONFIG=~/.kube/config
+```
+
 ## Usage
 usage: klusterstatus.py [-h] [-v] [-n NAMESPACES] [-N NAMESPACESBLACKLIST]
                         [-c CAPABILITIES] [-o {cli,json}]

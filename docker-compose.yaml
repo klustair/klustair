@@ -1,0 +1,14 @@
+version: '3.3'
+
+services:
+  klustair:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        KUBECTL_VERSION: "${KUBECTL_VERSION:-v1.17.0}"
+    image: klustair:latest
+    command: ["tail", "-f", "/dev/null"]
+    restart: on-failure
+    volumes:
+      - ${PATH_LOCAL_KUBECONFIG}:/kube.config
