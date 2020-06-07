@@ -281,7 +281,7 @@ def run():
 
 def get_anchoreVulnerabilities(containers):
     for container in containers:
-        pprint.pprint(container['image'])
+        #pprint.pprint(container)
         #anchore-cli --json --u admin --p foobar image vuln gcr.io/google_samples/k8szk:v3 all
         vulnerabilities = subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "vuln", container['image'], "all"], stdout=subprocess.PIPE).stdout.decode('utf-8')
         vuln_json = json.loads(vulnerabilities)
@@ -289,6 +289,10 @@ def get_anchoreVulnerabilities(containers):
 
         vulnsum = {
             'High': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Critical': {
                 'total': 0,
                 'fixed': 0
             },
@@ -303,11 +307,18 @@ def get_anchoreVulnerabilities(containers):
             'Negligible': {
                 'total': 0,
                 'fixed': 0
+            },
+            'Unknown': {
+                'total': 0,
+                'fixed': 0
             }
         }
         #pprint.pprint(vuln_json)
         if 'message' in vuln_json and vuln_json['message'] == 'cannot use input image string (no discovered imageDigest)':
-            print('not in anchore yet')
+            print('033[91mImage {} is not in anchore yet\033[0m'.format(container['image']))
+            subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "add", container['image']], stdout=subprocess.PIPE).stdout.decode('utf-8')
+        elif 'message' in vuln_json and vuln_json['message'] == 'image is not analyzed - analysis_status: analyzing':
+            continue
         else:
             for vuln in vuln_json['vulnerabilities']:
                 vulnsum[vuln['severity']]['total'] += 1
@@ -321,13 +332,13 @@ def get_anchoreVulnerabilities(containers):
 
 def display_cliresult():
     global result
-    HEADER = '\033[95m'
+    #HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
+    #WARNING = '\033[93m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
-    BOLD = '\033[1m'
+    #BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
     status = [
@@ -338,13 +349,13 @@ def display_cliresult():
 
     #pprint.pprint(result)
     for pod in result['pods']:
+        print("")
+        print('Pod: {}'.format(pod['metadata']['name']))
         for container in pod['containers']:
-            print("")
-            print(container['name'])
             for checkresult in container['checkresults']:
                 print('  {} : {}'.format(checkresult['description'].ljust(35), status[checkresult['result']]))
 
-            print('  '+UNDERLINE+'Vulnerabilies:                               '+ENDC)
+            print('  {}Vulnerabilies in {}                               {}'.format(UNDERLINE, container['image'], ENDC))
             for severity, numbers in container['vulnsum'].items():
                 print('    {} : {}/{}'.format(severity.ljust(33), numbers['total'], numbers['fixed']))
 
