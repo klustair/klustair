@@ -11,7 +11,7 @@ ENV KUBECONFIG="/kube.config"
 
 #install kubectl
 RUN apt-get update && apt-get install -y apt-transport-https curl; \
-echo ttps://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
+echo https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
 curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl ; \
 chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
 
