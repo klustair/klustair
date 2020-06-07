@@ -271,7 +271,7 @@ def run():
             get_anchoreVulnerabilities(containers_r)
 
             pod_r = {
-                'name': pod['metadata']['name'],
+                'metadata': pod['metadata'],
                 'namespace': nsName,
                 'creationTimestamp': datetime.strptime(pod['metadata']['creationTimestamp'], "%Y-%m-%dT%H:%M:%SZ"),
                 'containers': containers_r
