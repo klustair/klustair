@@ -264,10 +264,11 @@ def run():
             print("checking Pod name: {}".format(pod['metadata']['name']))
             log.debug("Pod creationTimestamp: {}".format(pod['metadata']['creationTimestamp']))
             
-            containers_r = normalize_containerstatus(pod['spec']['containers'] , pod['status']['containerStatuses'])
+            if 'containerStatuses' in pod['status']:
+                containers_r = normalize_containerstatus(pod['spec']['containers'] , pod['status']['containerStatuses'])
 
-            check_securityContext(containers_r, capabilitiesWhitelist)
-            #checkImage(containers_r)
+                check_securityContext(containers_r, capabilitiesWhitelist)
+                checkImage(containers_r)
             get_anchoreVulnerabilities(containers_r)
 
             pod_r = {
