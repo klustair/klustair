@@ -1,13 +1,16 @@
 # klusterstatus
-Checks the actuality of the Pod images in a kubernetes cluster
+What klusterstatus is for : 
+
+  - Sends all used images in your cluster to Anchore for vulnerability scan. 
+  - Checks the actuality of the Pod images in a kubernetes cluster. 
 
 ## requirements
  - Python 3
  - Local running kubectl with access to your kubernetes cluster
+ - Running Anchore (See docker-compose-anchore.yaml)
 
  ## limits
- - Does not check the age of Image or pod
- - does not check gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
+ - does not check the age of gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
 
 ## build
 ```
@@ -15,6 +18,11 @@ cp .env.example .env
 vim .env
 docker compose build
 ```
+or
+```
+docker compose build
+```
+
 
 ## run
 ```
@@ -51,25 +59,33 @@ export DOCKER_PASS=123456
 
 ## Result
 ```
-./klusterstatus.py -n solr -c NET_BIND_SERVICE 
+./klusterstatus.py -n myApp -c NET_BIND_SERVICE 
 
-zookeeper
+Pod: myApp-zookeeper-1
+Container: zookeeper
   Do not allow privilege escalation   : OK
   capabilities drop ALL               : OK
+  capabilitiy "NET_BIND_SERVICE" whitelisted to add : OK
+  Image: gcr.io/google_samples/k8szk:v3
   Vulnerabilies:                               
     High                              : 13/13
+    Critical                          : 0/0
     Medium                            : 267/233
     Low                               : 193/107
     Negligible                        : 100/4
+    Unknown                           : 0/0
 
-solr
+Pod: myApp-mongodb-replicaset-1
   Do not allow privilege escalation   : OK
   capabilities drop ALL               : OK
-  Vulnerabilies:                               
+  capabilitiy "NET_BIND_SERVICE" whitelisted to add : OK
+  Vulnerabilies in mongo:3.6                               
     High                              : 0/0
-    Medium                            : 0/0
-    Low                               : 0/0
-    Negligible                        : 0/0
+    Critical                          : 0/0
+    Medium                            : 32/2
+    Low                               : 70/6
+    Negligible                        : 76/0
+    Unknown                           : 0/0
 ```
 
 
@@ -78,3 +94,8 @@ solr
 curl https://docs.anchore.com/current/docs/engine/quickstart/docker-compose.yaml > docker-compose-anchore.yaml
 docker-compose -f docker-compose-anchore.yaml up -d 
 ```
+
+## Todo
+ - save reports in a database
+ - build a GUI to see the reports
+ - Helm charts for a clouddeployments
