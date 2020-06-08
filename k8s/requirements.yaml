@@ -1,0 +1,5 @@
+dependencies:
+  - name: anchore-engine
+    version: 1.6.8
+    repository: "https://kubernetes-charts.storage.googleapis.com/"
+    condition: anchore-engine.enabled

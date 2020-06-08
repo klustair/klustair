@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: klustair
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: klustair
+  template:
+    metadata:
+      labels:
+        app: klustair
+    spec:
+      containers:
+        - name: klustair-runner
+          image: {{ .Values.klustair.image }}:{{ .Values.klustair.tag }}
+          imagePullPolicy: {{ .Values.klustair.pullPolicy }}
+          command: ["tail", "-f", "/dev/null"]
+          env:
+            - name: DOCKER_USER
+              value: {{ .Values.klustair.dockerUser }}
+            - name: DOCKER_PASS
+              value: {{ .Values.klustair.dockerPass }}
+            - name: ANCHORE_CLI_USER
+              value: "admin"
+            - name: ANCHORE_CLI_PASS
+              value: {{ .Values.anchoreGlobal.defaultAdminPassword }}
+            - name: ANCHORE_CLI_URL
+              value: {{ .Values.klustair.AnchoreCliUrl }}
