@@ -12,3 +12,10 @@ services:
     restart: on-failure
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
+  database:
+    container_name: klustair-mongo-db
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - ./data/mongodb:/data/db

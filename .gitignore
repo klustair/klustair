@@ -134,3 +134,5 @@ dmypy.json
 notes.txt
 
 /k8s/secrets/kube.config
+/data/mongodb/*
+!/data/mongodb/.gitkeep
