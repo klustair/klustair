@@ -9,11 +9,11 @@ klustair:
 anchore-engine:
     enabled: true
 
-postgresql:
-    postgresPassword: mySecret
-    persistence:
-        size: 20Gi
+    postgresql:
+        postgresPassword: mySecret
+        persistence:
+            size: 20Gi
 
-anchoreGlobal:
-    defaultAdminPassword: adminpass
-    defaultAdminEmail: random@gmail.com
+    anchoreGlobal:
+        defaultAdminPassword: adminpass
+        defaultAdminEmail: random@gmail.com

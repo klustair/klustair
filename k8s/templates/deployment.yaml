@@ -1,7 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: klustair
+  name: klustair  
+  labels:
+    app: {{ template "name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 spec:
   replicas: 1
   selector:
@@ -25,6 +30,16 @@ spec:
             - name: ANCHORE_CLI_USER
               value: "admin"
             - name: ANCHORE_CLI_PASS
-              value: {{ .Values.anchoreGlobal.defaultAdminPassword }}
+              value: {{ index .Values "anchore-engine" "anchoreGlobal" "defaultAdminPassword" }}
             - name: ANCHORE_CLI_URL
               value: {{ .Values.klustair.AnchoreCliUrl }}
+            - name: KUBECONFIG
+              value: /configs/kube.config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: "/configs"
+              readOnly: true
+      volumes:
+      - name: kubeconfig
+        secret:
+            secretName: {{ .Release.Name }}-kubeconfig
