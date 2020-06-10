@@ -2,5 +2,8 @@ dependencies:
 - name: anchore-engine
   repository: https://kubernetes-charts.storage.googleapis.com/
   version: 1.6.8
-digest: sha256:6e4dc0da37a60ba82ddb6fd442da221de3d570c3e2340c21afc006393fb79114
-generated: "2020-06-08T14:23:18.513657+02:00"
+- name: mongodb
+  repository: https://charts.bitnami.com/bitnami/
+  version: 7.14.5
+digest: sha256:d48279aa08ad3bace0defc6bf2231b5a513b5d7cc290689acdf6d8074f966840
+generated: "2020-06-10T14:03:35.010226+02:00"

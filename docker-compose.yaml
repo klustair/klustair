@@ -10,6 +10,8 @@ services:
     image: klustair:latest
     command: ["tail", "-f", "/dev/null"]
     restart: on-failure
+    environment:
+      - MONGODB_CONNECTION=${MONGODB_CONNECTION}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
   database:

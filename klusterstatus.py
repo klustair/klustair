@@ -8,6 +8,7 @@ import argparse
 import os
 from datetime import datetime
 import pprint
+import pymongo
 
 HEADER = '\033[95m'
 OKBLUE = '\033[94m'
@@ -165,7 +166,8 @@ def checkImage_dockerhub(container):
     if 'last_updated' in remoteimage and 'running' in container['state']:
         log.debug("Image last_updated  : {}".format(remoteimage['last_updated']))
         image_last_updated = datetime.strptime(remoteimage['last_updated'], "%Y-%m-%dT%H:%M:%S.%fZ")
-        is_latestimage = image_last_updated < container['state']['running']['startedAt']
+        container_startedAt = datetime.strptime(container['state']['running']['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+        is_latestimage = image_last_updated < container_startedAt
 
     if 'images' in remoteimage:
         for image in remoteimage['images']:
@@ -219,8 +221,6 @@ def checkImage(containers):
 
         if 'state' in container and 'running' in container['state']:
             log.debug("Container started at: {}".format(container['state']['running']['startedAt']))
-            container_last_started = datetime.strptime(container['state']['running']['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-            container['state']['running']['startedAt'] = container_last_started
         
         if 'imageID' not in container:
             continue
@@ -243,6 +243,7 @@ def run():
 
     login_dockerub()
 
+    checktime = datetime.now()
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
     for namespace in namespaces['items']:
@@ -271,10 +272,13 @@ def run():
                 checkImage(containers_r)
             get_anchoreVulnerabilities(containers_r)
 
+            # most items have invalid keys
+            del pod['metadata']['annotations']
+            del pod['metadata']['labels']
+
             pod_r = {
                 'metadata': pod['metadata'],
-                'namespace': nsName,
-                'creationTimestamp': datetime.strptime(pod['metadata']['creationTimestamp'], "%Y-%m-%dT%H:%M:%SZ"),
+                'checktime' : checktime,
                 'containers': containers_r
             }
             result['pods'].append(pod_r)
@@ -360,6 +364,20 @@ def display_cliresult():
             for severity, numbers in container['vulnsum'].items():
                 print('    {} : {}/{}'.format(severity.ljust(33), numbers['total'], numbers['fixed']))
 
+def safe_result():
+    mongodbConnection = os.getenv('MONGODB_CONNECTION', False)
+    #mongodbConnection = 'mongodb://klustair-mongo-db:27017/klustair'
+    #mongodbConnection = 'mongodb://localhost:27017/klustair'
+
+    if not mongodbConnection:
+        return
+    
+    mdbClient = pymongo.MongoClient(mongodbConnection)
+    db = mdbClient["klustair"]
+    podsDB = db["pods"]
+    
+    podsDB.insert_many(result['pods'])
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -386,6 +404,7 @@ if __name__ == '__main__':
         capabilitiesWhitelist = args.capabilities.split(',')
 
     run()
+    safe_result()
 
     if args.output == 'cli':
         display_cliresult()

@@ -5,7 +5,15 @@ klustair:
     dockerUser: <USER>
     dockerPass: <PASSWORD>
     AnchoreCliUrl: "http://klustair-dev-anchore-engine-api:8228"
+    mongodbURL: klustair-dev-mongodb:27017/klustair
 
+mongodb:
+    enabled: true
+    mongodbRootPassword: secretpassword
+    mongodbUsername: my-user
+    mongodbPassword: my-password
+    mongodbDatabase: klustair
+    
 anchore-engine:
     enabled: true
 
