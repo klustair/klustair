@@ -14,6 +14,30 @@ services:
       - MONGODB_CONNECTION=${MONGODB_CONNECTION}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
+  klustair-frontend:
+    container_name: klustair-frontend
+    image: gicara/klustair-frontend:latest
+    restart: on-failure
+    environment:
+      - APP_NAME=${APP_NAME}
+      - APP_ENV=${APP_ENV}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG}
+      - APP_URL=${APP_URL}
+      - LOG_CHANNEL=${LOG_CHANNEL}
+      - DB_CONNECTION=${DB_CONNECTION}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - BROADCAST_DRIVER=${BROADCAST_DRIVER}
+      - CACHE_DRIVER=${CACHE_DRIVER}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      - SESSION_DRIVER=${SESSION_DRIVER}
+      - SESSION_LIFETIME=${SESSION_LIFETIME}
+    ports:
+      - 8080:80
   database:
     container_name: klustair-mongo-db
     image: mongo:latest

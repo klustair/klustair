@@ -322,6 +322,7 @@ def get_anchoreVulnerabilities(containers):
         if 'message' in vuln_json and vuln_json['message'] == 'cannot use input image string (no discovered imageDigest)':
             print('{}Image {} is not in anchore yet{}'.format("\033[91m", container['image'], "\033[0m"))
             subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "add", container['image']], stdout=subprocess.PIPE).stdout.decode('utf-8')
+            continue
         elif 'message' in vuln_json and vuln_json['message'] == 'image is not analyzed - analysis_status: analyzing':
             continue
         else:
