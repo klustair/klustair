@@ -96,6 +96,6 @@ docker-compose -f docker-compose-anchore.yaml up -d
 ```
 
 ## Todo
- - [ ] save reports in a database
- - [ ] build a GUI to see the reports
+ - [x] save reports in a database
+ - [x] build a GUI to see the reports
  - [x] Helm charts for a clouddeployments
