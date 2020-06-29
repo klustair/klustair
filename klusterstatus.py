@@ -273,8 +273,10 @@ def run():
             get_anchoreVulnerabilities(containers_r)
 
             # most items have invalid keys
-            del pod['metadata']['annotations']
-            del pod['metadata']['labels']
+            if 'annotations' in pod['metadata']:
+                del pod['metadata']['annotations']
+            if 'labels' in pod['metadata']:
+                del pod['metadata']['labels']
 
             pod_r = {
                 'metadata': pod['metadata'],
