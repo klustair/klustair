@@ -10,7 +10,7 @@ ENV ANCHORE_CLI_URL="http://172.17.0.1:8228"
 ENV KUBECONFIG="/kube.config"
 
 #install kubectl
-RUN apt-get update && apt-get install -y apt-transport-https curl; \
+RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2; \
 echo https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
 curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl ; \
 chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
