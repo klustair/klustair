@@ -288,7 +288,7 @@ def get_anchoreVulnerabilities(containers):
     for container in containers:
         #pprint.pprint(container)
         #anchore-cli --json --u admin --p foobar image vuln gcr.io/google_samples/k8szk:v3 all
-        vulnerabilities = subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "vuln", container['image'], "all"], stdout=subprocess.PIPE).stdout.decode('utf-8')
+        vulnerabilities = subprocess.run(["anchore-cli", "--json", "image", "vuln", container['image'], "all"], stdout=subprocess.PIPE).stdout.decode('utf-8')
         vuln_json = json.loads(vulnerabilities)
 
 
@@ -321,7 +321,7 @@ def get_anchoreVulnerabilities(containers):
         #pprint.pprint(vuln_json)
         if 'message' in vuln_json and vuln_json['message'] == 'cannot use input image string (no discovered imageDigest)':
             print('{}Image {} is not in anchore yet{}'.format("\033[91m", container['image'], "\033[0m"))
-            subprocess.run(["anchore-cli", "--json", "--u", "admin", "--p", "foobar", "image", "add", container['image']], stdout=subprocess.PIPE).stdout.decode('utf-8')
+            subprocess.run(["anchore-cli", "--json", "image", "add", container['image']], stdout=subprocess.PIPE).stdout.decode('utf-8')
             continue
         elif 'message' in vuln_json and vuln_json['message'] == 'image is not analyzed - analysis_status: analyzing':
             continue
