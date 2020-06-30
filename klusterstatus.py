@@ -295,11 +295,11 @@ def get_anchoreVulnerabilities(containers):
 
 
         vulnsum = {
-            'High': {
+            'Critical': {
                 'total': 0,
                 'fixed': 0
             },
-            'Critical': {
+            'High': {
                 'total': 0,
                 'fixed': 0
             },
