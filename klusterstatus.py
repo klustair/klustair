@@ -325,7 +325,8 @@ def get_anchoreVulnerabilities(containers):
             print('{}Image {} is not in anchore yet{}'.format("\033[91m", container['image'], "\033[0m"))
             subprocess.run(["anchore-cli", "--json", "image", "add", container['image']], stdout=subprocess.PIPE).stdout.decode('utf-8')
             continue
-        elif 'message' in vuln_json and vuln_json['message'] == 'image is not analyzed - analysis_status: analyzing':
+        elif 'message' in vuln_json:
+            print('{}Image {} is not in anchore yet: {} {}'.format("\033[91m", container['image'], vuln_json['message'], "\033[0m"))
             continue
         else:
             for vuln in vuln_json['vulnerabilities']:
