@@ -102,14 +102,15 @@ def checkImage_quayio(image, imageID):
     except:
         log.error("ERROR: cant load tagslist")
         return
+
     for tagMeta in tagslist['tags']:
         if tagMeta['name'] == tag:
             manifest_digest = tagMeta['manifest_digest']
             last_modified = tagMeta['last_modified']
-    log.debug("Image last_modified: {}".format(last_modified))
+            log.debug("Image last_modified: {}".format(last_modified))
 
-    manifestUrl = "https://quay.io/api/v1/repository/{}/manifest/{}".format(repository, manifest_digest)
-    log.debug("manifestUrl: {}".format(manifestUrl))
+            manifestUrl = "https://quay.io/api/v1/repository/{}/manifest/{}".format(repository, manifest_digest)
+            log.debug("manifestUrl: {}".format(manifestUrl))
     try:
         r = requests.get(manifestUrl)
         remoteimage = json.loads(r.content)
