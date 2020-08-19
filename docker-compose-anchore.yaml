@@ -99,6 +99,8 @@ services:
       - anchore-db-volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
+    ports:
+      - "5432:5432"
     expose:
       - 5432
     logging:
