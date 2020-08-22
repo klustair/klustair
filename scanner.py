@@ -98,7 +98,7 @@ def createReport():
     return report
 
 def saveToDB():
-    
+    return
 
 def run():
     report = createReport()
