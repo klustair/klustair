@@ -85,13 +85,20 @@ def getImages(containersList):
 
     return uniqueImagesList
 
+def submitImagesToAnchore(uniqueImagesList):
+    for image in uniqueImagesList:
+        anchoreAdd = json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        pprint.pprint(anchoreAdd)
 def run():
     nsList = getNamespaces()
+    #pprint.pprint(nsList)
     [podsList, containersList] = getPods(nsList)
     #pprint.pprint(podsList)
     #pprint.pprint(containersList)
     uniqueImagesList = getImages(containersList)
-    pprint.pprint(uniqueImagesList)
+    #pprint.pprint(uniqueImagesList)
+
+    submitImagesToAnchore(uniqueImagesList)
 
 if __name__ == '__main__':
 
