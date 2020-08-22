@@ -12,6 +12,15 @@ What klusterstatus is for :
  ## limits
  - does not check the age of gcr.io images (Help wanted, since i was not able to find any information about gcr.io API )
 
+## develop
+```
+python3 -m venv env
+source develop/bin/activate
+pip install -r requirements.txt
+
+deactivate
+```
+
 ## build
 ```
 cp .env.example .env
