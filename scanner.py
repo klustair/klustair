@@ -8,7 +8,6 @@ import argparse
 import os
 from datetime import datetime
 import pprint
-import pymongo
 
 def getNamespaces():
     
