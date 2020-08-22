@@ -89,7 +89,20 @@ def submitImagesToAnchore(uniqueImagesList):
     for image in uniqueImagesList:
         anchoreAdd = json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         pprint.pprint(anchoreAdd)
+
+def createReport():
+    report = {
+        'checktime': datetime.now(),
+    }
+
+    return report
+
+def saveToDB():
+    
+
 def run():
+    report = createReport()
+    #pprint.pprint(report)
     nsList = getNamespaces()
     #pprint.pprint(nsList)
     [podsList, containersList] = getPods(nsList)
