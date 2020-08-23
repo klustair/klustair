@@ -9,6 +9,9 @@ import os
 from datetime import datetime
 import time
 import pprint
+import uuid
+
+report = {}
 
 def getNamespaces():
     
@@ -19,6 +22,7 @@ def getNamespaces():
         ns = {
             'name': namespace['metadata']['name'],
             'uid': namespace['metadata']['uid'],
+            'report_uid': report['uid'],
             'creationTimestamp': namespace['metadata']['creationTimestamp']
         }
 
@@ -41,6 +45,7 @@ def getPods(nsList):
         for pod in pods['items']:
             p = {
                 'name': pod['metadata']['name'],
+                'report_uid': report['uid'],
                 'namespace_uid': ns['uid'],
                 'uid': pod['metadata']['uid'],
                 'creationTimestamp': pod['metadata']['creationTimestamp']
@@ -51,6 +56,7 @@ def getPods(nsList):
             for container in pod['spec']['containers']: 
                 c = {
                     'name': container['name'],
+                    'report_uid': report['uid'],
                     'namespace_uid': ns['uid'],
                     'pod_uid': p['uid'],
                     'image': container['image'],
@@ -67,6 +73,7 @@ def getPods(nsList):
                 for initContainer in pod['spec']['initContainers']:
                     c = {
                         'name': initContainer['name'],
+                        'report_uid': report['uid'],
                         'namespace_uid': ns['uid'],
                         'pod_uid': p['uid'],
                         'image': initContainer['image'],
@@ -137,7 +144,10 @@ def getImageVulnerabilities(uniqueImagesList):
     return imageVulnList, imageVulnSummary
 
 def createReport():
+    global report
+    reportUuid = str(uuid.uuid4())
     report = {
+        'uid': reportUuid,
         'checktime': datetime.now(),
     }
 
@@ -171,11 +181,14 @@ def saveToDB():
 def run():
     report = createReport()
     #pprint.pprint(report)
+
     nsList = getNamespaces()
     #pprint.pprint(nsList)
+
     [podsList, containersList] = getPods(nsList)
     #pprint.pprint(podsList)
     #pprint.pprint(containersList)
+
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
