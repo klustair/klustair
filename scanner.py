@@ -7,6 +7,7 @@ import logging as log
 import argparse
 import os
 from datetime import datetime
+import time
 import pprint
 
 def getNamespaces():
@@ -97,6 +98,28 @@ def createReport():
 
     return report
 
+def awaitAnalysis():
+    try:
+        allAnalyzed = False
+        while allAnalyzed == False:
+            print("waiting")
+            time.sleep(3)
+            anchoreSyncStatus = json.loads(subprocess.run(["anchore-cli", "--json", "image", "list"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+
+            # Check if all images are analyzed
+            for status in anchoreSyncStatus: 
+                if status['analysis_status'] != 'analyzed':
+                    allAnalyzed = False
+                    break
+                else: 
+                    allAnalyzed = True
+
+    except (KeyboardInterrupt, SystemExit):
+        print("ABORT: Analysis aborted. No data was saved. ")
+        sys.exit(0)
+    except:
+        print("ERROR")
+
 def saveToDB():
     return
 
@@ -112,6 +135,8 @@ def run():
     #pprint.pprint(uniqueImagesList)
 
     submitImagesToAnchore(uniqueImagesList)
+    
+    awaitAnalysis()
 
 if __name__ == '__main__':
 
