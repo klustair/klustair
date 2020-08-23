@@ -14,7 +14,7 @@ import uuid
 report = {}
 
 def getNamespaces():
-    
+    pprint.pprint(report)
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
     
     nsList=[]
@@ -95,7 +95,7 @@ def getImages(containersList):
 
 def submitImagesToAnchore(uniqueImagesList):
     for image in uniqueImagesList:
-        anchoreAdd = json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         log.debug("Submitted Image: {}".format(image))
 
 def getImageVulnerabilities(uniqueImagesList):
@@ -136,7 +136,6 @@ def getImageVulnerabilities(uniqueImagesList):
             vulnsum[vulnerability['severity']]['total'] += 1
             if vulnerability['fix'] != 'None':
                 vulnsum[vulnerability['severity']]['fixed'] += 1
-        #pprint.pprint(imageVuln)
 
         imageVulnList[image] = vulnlist
         imageVulnSummary[image] = vulnsum
@@ -157,12 +156,12 @@ def awaitAnalysis():
     try:
         allAnalyzed = False
         while allAnalyzed == False:
-            print("waiting")
+            print('waiting for images to be analysed')
             time.sleep(3)
             anchoreSyncStatus = json.loads(subprocess.run(["anchore-cli", "--json", "image", "list"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
             # Check if all images are analyzed
-            for status in anchoreSyncStatus: 
+            for status in anchoreSyncStatus:
                 if status['analysis_status'] != 'analyzed':
                     allAnalyzed = False
                     break
