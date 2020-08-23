@@ -89,7 +89,52 @@ def getImages(containersList):
 def submitImagesToAnchore(uniqueImagesList):
     for image in uniqueImagesList:
         anchoreAdd = json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-        pprint.pprint(anchoreAdd)
+        log.debug("Submitted Image: {}".format(image))
+
+def getImageVulnerabilities(uniqueImagesList):
+    imageVulnList = {}
+    imageVulnSummary = {}
+    for image in uniqueImagesList:
+        vulnlist = []
+        vulnsum = {
+            'Critical': {
+                'total': 0,
+                'fixed': 0
+            },
+            'High': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Medium': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Low': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Negligible': {
+                'total': 0,
+                'fixed': 0
+            },
+            'Unknown': {
+                'total': 0,
+                'fixed': 0
+            }
+        }
+
+        imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image, 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        for vulnerability in imageVuln['vulnerabilities']:
+            vulnlist.append(vulnerability['vuln'])
+            vulnsum[vulnerability['severity']]['total'] += 1
+            if vulnerability['fix'] != 'None':
+                vulnsum[vulnerability['severity']]['fixed'] += 1
+        #pprint.pprint(imageVuln)
+
+        imageVulnList[image] = vulnlist
+        imageVulnSummary[image] = vulnsum
+
+    return imageVulnList, imageVulnSummary
 
 def createReport():
     report = {
@@ -137,6 +182,10 @@ def run():
     submitImagesToAnchore(uniqueImagesList)
     
     awaitAnalysis()
+
+    [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
+    #pprint.pprint(imageVulnList)
+    #pprint.pprint(imageVulnSummary)
 
 if __name__ == '__main__':
 
