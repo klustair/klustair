@@ -10,11 +10,11 @@ from datetime import datetime
 import time
 import pprint
 import uuid
+import psycopg2
 
 report = {}
 
 def getNamespaces():
-    pprint.pprint(report)
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
     
     nsList=[]
@@ -44,13 +44,13 @@ def getPods(nsList):
         
         for pod in pods['items']:
             p = {
-                'name': pod['metadata']['name'],
+                'podname': pod['metadata']['name'],
                 'report_uid': report['uid'],
                 'namespace_uid': ns['uid'],
                 'uid': pod['metadata']['uid'],
                 'creationTimestamp': pod['metadata']['creationTimestamp']
             }
-            log.debug("Pod: {}".format(p['name']))
+            log.debug("Pod: {}".format(p['podname']))
             #pprint.pprint(pod)
             podsList.append(p)
             for container in pod['spec']['containers']: 
@@ -90,6 +90,11 @@ def getImages(containersList):
     for container in containersList:
         imagesList.append(container['image'])
     uniqueImagesList = list(set(imagesList))
+
+    # Loat the imageID and the Digest
+    #for image in uniqueImagesList:
+    #    json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+    #    log.debug("Submitted Image: {}".format(image))
 
     return uniqueImagesList
 
@@ -144,10 +149,9 @@ def getImageVulnerabilities(uniqueImagesList):
 
 def createReport():
     global report
-    reportUuid = str(uuid.uuid4())
+    reportUid = str(uuid.uuid4())
     report = {
-        'uid': reportUuid,
-        'checktime': datetime.now(),
+        'uid': reportUid,
     }
 
     return report
@@ -174,7 +178,27 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB():
+def saveToDB(report):
+    # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
+    pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
+    pdgbDb = os.getenv('PGDBDB_db', 'postgres')
+    pdgbUser = os.getenv('PGDBDB_USER', False)
+    pdgbPass = os.getenv('PGDBDB_PASS', False)
+    pdgbHost = os.getenv('PGDBDB_HOST', '127.0.0.1')
+    pdgbPort = os.getenv('PGDBDB_PORT', '5432')
+    
+    if pdgbConnection:
+        conn = psycopg2.connect(pdgbConnection)
+    elif pdgbUser and pdgbUser: 
+        conn = psycopg2.connect(
+            database=pdgbDb, user=pdgbUser, password=pdgbPass, host=pdgbHost, port= pdgbPort
+        )
+
+    conn.autocommit = True
+    cursor = conn.cursor()
+
+    pprint.pprint(report)
+    cursor.execute("INSERT INTO k_reports(uid, checktime) VALUES ('{0}', current_timestamp)".format(report['uid']))
     return
 
 def run():
@@ -198,6 +222,8 @@ def run():
     [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
+
+    saveToDB(report)
 
 if __name__ == '__main__':
 
