@@ -99,17 +99,34 @@ def getImages(containersList):
         imagesList.append(container['image'])
     uniqueImagesList = list(set(imagesList))
 
-    # Loat the imageID and the Digest
-    #for image in uniqueImagesList:
-    #    json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-    #    log.debug("Submitted Image: {}".format(image))
-
     return uniqueImagesList
 
 def submitImagesToAnchore(uniqueImagesList):
     for image in uniqueImagesList:
         json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         log.debug("Submitted Image: {}".format(image))
+
+def getImageDetailsList(uniqueImagesList):
+    imagesList = {}
+    for image in uniqueImagesList:
+        imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
+        imageUid = str(uuid.uuid4())
+        imagesList[image] = {
+            'uid': imageUid,
+            'anchore_imageid': imagedetails['image_detail'][0]['imageId'],
+            'analyzed_at': imagedetails['analyzed_at'],
+            'created_at': imagedetails['created_at'],
+            'fulltag': imagedetails['image_detail'][0]['fulltag'],
+            'image_digest': imagedetails['imageDigest'],
+            'arch': imagedetails['image_content']['metadata']['arch'],
+            'distro': imagedetails['image_content']['metadata']['distro'],
+            'distro_version': imagedetails['image_content']['metadata']['distro_version'],
+            'image_size': imagedetails['image_content']['metadata']['image_size'],
+            'layer_count': imagedetails['image_content']['metadata']['layer_count'],
+            'registry': imagedetails['image_detail'][0]['registry'],
+            'repo': imagedetails['image_detail'][0]['repo']
+        }
+    return imagesList
 
 def getImageVulnerabilities(uniqueImagesList):
     imageVulnList = {}
@@ -186,7 +203,7 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB(report, nsList, podsList, containersList):
+def saveToDB(report, nsList, podsList, containersList, imageDetailsList):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
     pdgbDb = os.getenv('PGDBDB_db', 'postgres')
@@ -235,6 +252,43 @@ def saveToDB(report, nsList, podsList, containersList):
                 container['init_container']
         ))
 
+    for image in imageDetailsList.values():
+        pprint.pprint(image)
+        cursor.execute('''INSERT INTO k_images(
+                uid, 
+                report_uid, 
+                anchore_imageid, 
+                analyzed_at, 
+                created_at, 
+                fulltag, 
+                image_digest, 
+                arch, 
+                distro, 
+                distro_version, 
+                image_size, 
+                layer_count, 
+                registry, 
+                repo
+            ) VALUES (
+                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}'
+            )'''
+            .format(
+                image['uid'],
+                report['uid'], 
+                image['anchore_imageid'],
+                image['analyzed_at'],
+                image['created_at'],
+                image['fulltag'],
+                image['image_digest'],
+                image['arch'],
+                image['distro'],
+                image['distro_version'],
+                image['image_size'],
+                image['layer_count'],
+                image['registry'],
+                image['repo']
+        ))
+
     return
 
 def run():
@@ -255,11 +309,15 @@ def run():
     
     awaitAnalysis()
 
+    imageDetailsList = getImageDetailsList(uniqueImagesList)
+
+    saveToDB(report, nsList, podsList, containersList, imageDetailsList)
+    sys.exit(0)
+
     [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
-    
-    saveToDB(report, nsList, podsList, containersList)
+
     sys.exit(0)
 
 
