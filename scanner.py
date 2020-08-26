@@ -19,11 +19,13 @@ def getNamespaces():
     
     nsList=[]
     for namespace in namespaces['items']:
+        namespaceUid = str(uuid.uuid4())
         ns = {
             'name': namespace['metadata']['name'],
-            'uid': namespace['metadata']['uid'],
+            'uid': namespaceUid,
+            'kubernetes_namespace_uid': namespace['metadata']['uid'],
             'report_uid': report['uid'],
-            'creationTimestamp': namespace['metadata']['creationTimestamp']
+            'creation_timestamp': namespace['metadata']['creationTimestamp']
         }
 
         if namespacesWhitelist and ns['name'] not in namespacesWhitelist: 
@@ -43,26 +45,30 @@ def getPods(nsList):
         pods = json.loads(subprocess.run(["kubectl", "get", "pods", "-n", ns['name'], "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         
         for pod in pods['items']:
+            podUid = str(uuid.uuid4())
             p = {
                 'podname': pod['metadata']['name'],
                 'report_uid': report['uid'],
                 'namespace_uid': ns['uid'],
-                'uid': pod['metadata']['uid'],
-                'creationTimestamp': pod['metadata']['creationTimestamp']
+                'kubernetes_pod_uid': pod['metadata']['uid'],
+                'uid': podUid,
+                'creation_timestamp': pod['metadata']['creationTimestamp']
             }
             log.debug("Pod: {}".format(p['podname']))
             #pprint.pprint(pod)
             podsList.append(p)
-            for container in pod['spec']['containers']: 
+            for container in pod['spec']['containers']:
+                containerUid = str(uuid.uuid4())
                 c = {
                     'name': container['name'],
                     'report_uid': report['uid'],
                     'namespace_uid': ns['uid'],
                     'pod_uid': p['uid'],
+                    'uid': containerUid,
                     'image': container['image'],
-                    'imagePullPolicy': container['imagePullPolicy'],
-                    'securityContext': container.get('securityContext', ''),
-                    'initContainer': False
+                    'image_pull_policy': container['imagePullPolicy'],
+                    'security_context': json.dumps(container.get('securityContext', '')),
+                    'init_container': False
                 }
                 ### ADD CONTAINER STATUS !!!!
 
@@ -71,15 +77,17 @@ def getPods(nsList):
 
             if 'initContainers' in pod['spec']:
                 for initContainer in pod['spec']['initContainers']:
+                    initContainerUid = str(uuid.uuid4())
                     c = {
                         'name': initContainer['name'],
                         'report_uid': report['uid'],
                         'namespace_uid': ns['uid'],
                         'pod_uid': p['uid'],
+                        'uid': initContainerUid,
                         'image': initContainer['image'],
-                        'imagePullPolicy': initContainer['imagePullPolicy'],
-                        'securityContext': initContainer.get('securityContext', ''),
-                        'initContainer': True
+                        'image_pull_policy': initContainer['imagePullPolicy'],
+                        'security_context': json.dumps(initContainer.get('securityContext', '')),
+                        'init_container': True
                     }
                     containersList.append(c)
 
@@ -178,7 +186,7 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB(report):
+def saveToDB(report, nsList, podsList, containersList):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
     pdgbDb = os.getenv('PGDBDB_db', 'postgres')
@@ -250,8 +258,10 @@ def run():
     [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
+    
+    saveToDB(report, nsList, podsList, containersList)
+    sys.exit(0)
 
-    saveToDB(report)
 
 if __name__ == '__main__':
 
