@@ -26,7 +26,8 @@ CREATE TABLE public.k_namespaces
     name character varying COLLATE pg_catalog."default" NOT NULL,
     uid character varying COLLATE pg_catalog."default" NOT NULL,
     report_uid character varying COLLATE pg_catalog."default" NOT NULL,
-    "creationTimestamp" date NOT NULL,
+    creation_timestamp timestamp with time zone NOT NULL,
+    kubernetes_namespace_uid character varying COLLATE pg_catalog."default",
     CONSTRAINT k_namespaces_pkey PRIMARY KEY (report_uid, uid),
     CONSTRAINT k_namespaces_uid_key UNIQUE (uid),
     CONSTRAINT k_namespaces_report_uid_fkey FOREIGN KEY (report_uid)
@@ -53,7 +54,8 @@ CREATE TABLE public.k_pods
     report_uid character varying COLLATE pg_catalog."default" NOT NULL,
     namespace_uid character varying COLLATE pg_catalog."default" NOT NULL,
     uid character varying COLLATE pg_catalog."default" NOT NULL,
-    "creationTimestamp" date NOT NULL,
+    creation_timestamp date NOT NULL,
+    kubernetes_pod_uid character varying COLLATE pg_catalog."default",
     CONSTRAINT k_pods_pkey PRIMARY KEY (report_uid, namespace_uid, uid),
     CONSTRAINT k_pods_uid_key UNIQUE (uid),
     CONSTRAINT k_pods_namespace_uid_fkey FOREIGN KEY (namespace_uid)
@@ -83,7 +85,6 @@ CREATE INDEX k_pods_namespace_uid_fkey
     (namespace_uid COLLATE pg_catalog."default" ASC NULLS LAST)
     TABLESPACE pg_default;
 
-
 -- Table: public.k_containers
 
 -- DROP TABLE public.k_containers;
@@ -95,10 +96,12 @@ CREATE TABLE public.k_containers
     namespace_uid character varying COLLATE pg_catalog."default" NOT NULL,
     pod_uid character varying COLLATE pg_catalog."default" NOT NULL,
     image character varying COLLATE pg_catalog."default",
-    "imagePullPolicy" character varying COLLATE pg_catalog."default",
-    "securityContext" json,
-    "initContainer" boolean,
+    image_pull_policy character varying COLLATE pg_catalog."default",
+    security_context json,
+    init_container boolean,
+    uid character varying COLLATE pg_catalog."default",
     CONSTRAINT k_containers_pkey PRIMARY KEY (name, report_uid, namespace_uid, pod_uid),
+    CONSTRAINT k_containers_uid_key UNIQUE (uid),
     CONSTRAINT k_containers_namespace_uid_fkey FOREIGN KEY (namespace_uid)
         REFERENCES public.k_namespaces (uid) MATCH SIMPLE
         ON UPDATE NO ACTION

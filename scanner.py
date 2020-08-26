@@ -197,8 +197,36 @@ def saveToDB(report):
     conn.autocommit = True
     cursor = conn.cursor()
 
-    pprint.pprint(report)
     cursor.execute("INSERT INTO k_reports(uid, checktime) VALUES ('{0}', current_timestamp)".format(report['uid']))
+
+    for ns in nsList:
+        cursor.execute("INSERT INTO k_namespaces(name, kubernetes_namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}')"
+            .format(ns['name'], ns['kubernetes_namespace_uid'], ns['uid'], report['uid'], ns['creation_timestamp']))
+
+    for pod in podsList:
+        cursor.execute("INSERT INTO k_pods(podname, kubernetes_pod_uid, namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}')"
+            .format(
+                pod['podname'], 
+                pod['kubernetes_pod_uid'], 
+                pod['namespace_uid'], 
+                pod['uid'], 
+                report['uid'], 
+                pod['creation_timestamp']))
+
+    for container in containersList:
+        cursor.execute("INSERT INTO k_containers(name, report_uid, namespace_uid, pod_uid, uid, image, image_pull_policy, security_context, init_container) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')"
+            .format(
+                container['name'], 
+                report['uid'], 
+                container['namespace_uid'], 
+                container['pod_uid'],
+                container['uid'], 
+                container['image'],
+                container['image_pull_policy'],
+                container['security_context'],
+                container['init_container']
+        ))
+
     return
 
 def run():
