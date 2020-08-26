@@ -128,11 +128,10 @@ def getImageDetailsList(uniqueImagesList):
         }
     return imagesList
 
-def getImageVulnerabilities(uniqueImagesList):
+def getImageVulnerabilities(imageDetailsList):
     imageVulnList = {}
     imageVulnSummary = {}
-    for image in uniqueImagesList:
-        vulnlist = []
+    for image, imagedetails in imageDetailsList.items():
         vulnsum = {
             'Critical': {
                 'total': 0,
@@ -161,15 +160,16 @@ def getImageVulnerabilities(uniqueImagesList):
         }
 
         imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image, 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        
         for vulnerability in imageVuln['vulnerabilities']:
-            vulnlist.append(vulnerability['vuln'])
             vulnsum[vulnerability['severity']]['total'] += 1
             if vulnerability['fix'] != 'None':
                 vulnsum[vulnerability['severity']]['fixed'] += 1
 
-        imageVulnList[image] = vulnlist
-        imageVulnSummary[image] = vulnsum
-
+        image_uid = imagedetails['uid']
+        imageVulnList[image_uid] = imageVuln['vulnerabilities']
+        imageVulnSummary[image_uid] = vulnsum
+    
     return imageVulnList, imageVulnSummary
 
 def createReport():
@@ -203,7 +203,7 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB(report, nsList, podsList, containersList, imageDetailsList):
+def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
     pdgbDb = os.getenv('PGDBDB_db', 'postgres')
@@ -253,7 +253,6 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList):
         ))
 
     for image in imageDetailsList.values():
-        pprint.pprint(image)
         cursor.execute('''INSERT INTO k_images(
                 uid, 
                 report_uid, 
@@ -288,6 +287,28 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList):
                 image['registry'],
                 image['repo']
         ))
+    
+    for image_uid, imageSummary in imageVulnSummary.items():
+        for severity, values in imageSummary.items():
+            imagesummaryUid = str(uuid.uuid4())
+            cursor.execute('''INSERT INTO k_images_vulnsummary(
+                    uid,
+                    image_uid, 
+                    report_uid, 
+                    severity,
+                    total,
+                    fixed
+                ) VALUES (
+                    '{0}', '{1}', '{2}', '{3}', '{4}', '{5}'
+                )'''
+                .format(
+                    imagesummaryUid,
+                    image_uid,
+                    report['uid'], 
+                    severity,
+                    values['total'],
+                    values['fixed']
+            ))
 
     return
 
@@ -305,19 +326,18 @@ def run():
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
-    submitImagesToAnchore(uniqueImagesList)
+    #submitImagesToAnchore(uniqueImagesList)
     
-    awaitAnalysis()
+    #awaitAnalysis()
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
 
-    saveToDB(report, nsList, podsList, containersList, imageDetailsList)
-    sys.exit(0)
 
-    [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
+    [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
 
+    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary)
     sys.exit(0)
 
 

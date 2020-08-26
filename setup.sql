@@ -161,3 +161,25 @@ TABLESPACE pg_default;
 
 ALTER TABLE public."k_imageVulnSummary"
     OWNER to postgres;
+
+-- Table: public.k_images_vulnsummary
+
+-- DROP TABLE public.k_images_vulnsummary;
+
+CREATE TABLE public.k_images_vulnsummary
+(
+    uid character varying COLLATE pg_catalog."default" NOT NULL,
+    severity vulnerability_severities,
+    total integer,
+    fixed integer,
+    report_uid character varying COLLATE pg_catalog."default",
+    image_uid character varying COLLATE pg_catalog."default",
+    CONSTRAINT "k_imageVulnSummary_pkey" PRIMARY KEY (uid)
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE pg_default;
+
+ALTER TABLE public.k_images_vulnsummary
+    OWNER to postgres;
