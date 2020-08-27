@@ -203,7 +203,7 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary):
+def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
     pdgbDb = os.getenv('PGDBDB_db', 'postgres')
@@ -310,6 +310,61 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                     values['fixed']
             ))
 
+    for image_uid, vulnList in imageVulnList.items():
+        for vuln in vulnList:
+            vulnUid = str(uuid.uuid4())
+            try:
+                nvd_data = vuln['nvd_data'][0]
+            except IndexError:
+                nvd_data = {'id': '', 'cvss_v3': {'base_score':0,'exploitability_score':0,'impact_score':0,}}
+
+            cursor.execute('''INSERT INTO k_images_vuln(
+                    uid,
+                    image_uid, 
+                    report_uid, 
+                    feed,
+                    feed_group,
+                    fix,
+                    nvd_data_id,
+                    nvd_data_base_score,
+                    nvd_data_exploitability_score,
+                    nvd_data_impact_score,
+                    package_fullname,
+                    package_cpe,
+                    package_cpe23,
+                    package_name,
+                    package_path,
+                    package_type,
+                    package_version,
+                    severity,
+                    url,
+                    vuln
+                ) VALUES (
+                    '{0}', '{1}', '{2}', '{3}', '{4}', '{5}','{6}', {7}, {8}, {9}, '{10}', '{11}', '{12}', '{13}', '{14}', '{15}', '{16}', '{17}', '{18}', '{19}'
+                )'''
+                .format(
+                    vulnUid,
+                    image_uid,
+                    report['uid'], 
+                    vuln['feed'],
+                    vuln['feed_group'],
+                    vuln['fix'],
+                    nvd_data['id'],
+                    nvd_data['cvss_v3']['base_score'],
+                    nvd_data['cvss_v3']['exploitability_score'],
+                    nvd_data['cvss_v3']['impact_score'],
+                    vuln['package'],
+                    vuln['package_cpe'],
+                    vuln['package_cpe23'],
+                    vuln['package_name'],
+                    vuln['package_path'],
+                    vuln['package_type'],
+                    vuln['package_version'],
+                    vuln['severity'],
+                    vuln['url'],
+                    vuln['vuln']
+            ))
+
     return
 
 def run():
@@ -326,9 +381,9 @@ def run():
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
-    #submitImagesToAnchore(uniqueImagesList)
+    submitImagesToAnchore(uniqueImagesList)
     
-    #awaitAnalysis()
+    awaitAnalysis()
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
 
@@ -337,7 +392,7 @@ def run():
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
 
-    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary)
+    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList)
     sys.exit(0)
 
 
