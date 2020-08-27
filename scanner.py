@@ -15,6 +15,7 @@ import psycopg2
 report = {}
 
 def getNamespaces():
+    print('INFO: Load Namespaces')
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
     
     nsList=[]
@@ -38,6 +39,7 @@ def getNamespaces():
     return nsList
 
 def getPods(nsList):
+    print('INFO: Load Pod an Container informations')
 
     podsList=[]
     containersList=[]
@@ -70,6 +72,7 @@ def getPods(nsList):
                     'security_context': json.dumps(container.get('securityContext', '')),
                     'init_container': False
                 }
+                log.debug("Container: {}".format(c['name']))
                 ### ADD CONTAINER STATUS !!!!
 
                 #pprint.pprint(container)
@@ -89,6 +92,7 @@ def getPods(nsList):
                         'security_context': json.dumps(initContainer.get('securityContext', '')),
                         'init_container': True
                     }
+                    log.debug("initContainer: {}".format(c['name']))
                     containersList.append(c)
 
     return podsList, containersList
@@ -102,13 +106,16 @@ def getImages(containersList):
     return uniqueImagesList
 
 def submitImagesToAnchore(uniqueImagesList):
+    print('INFO: Submit images to Anchore')
     for image in uniqueImagesList:
         json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         log.debug("Submitted Image: {}".format(image))
 
 def getImageDetailsList(uniqueImagesList):
+    print('INFO: Load imagedetails')
     imagesList = {}
     for image in uniqueImagesList:
+        log.debug("Load Image: {}".format(image))
         imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
         imageUid = str(uuid.uuid4())
         imagesList[image] = {
@@ -130,9 +137,11 @@ def getImageDetailsList(uniqueImagesList):
     return imagesList
 
 def getImageVulnerabilities(imageDetailsList):
+    print('INFO: Load Vulnerabilities')
     imageVulnList = {}
     imageVulnSummary = {}
     for image, imagedetails in imageDetailsList.items():
+        log.debug("Load Vuln: {}".format(image))
         vulnsum = {
             'Critical': {
                 'total': 0,
@@ -186,7 +195,7 @@ def awaitAnalysis():
     try:
         allAnalyzed = False
         while allAnalyzed == False:
-            print('waiting for images to be analysed')
+            print('INFO: waiting for images to be analysed')
             time.sleep(3)
             anchoreSyncStatus = json.loads(subprocess.run(["anchore-cli", "--json", "image", "list"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
@@ -205,6 +214,7 @@ def awaitAnalysis():
         print("ERROR")
 
 def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList):
+    print("INFO: Save data to DB")
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
     pdgbDb = os.getenv('PGDBDB_db', 'postgres')
