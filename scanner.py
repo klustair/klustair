@@ -124,7 +124,8 @@ def getImageDetailsList(uniqueImagesList):
             'image_size': imagedetails['image_content']['metadata']['image_size'],
             'layer_count': imagedetails['image_content']['metadata']['layer_count'],
             'registry': imagedetails['image_detail'][0]['registry'],
-            'repo': imagedetails['image_detail'][0]['repo']
+            'repo': imagedetails['image_detail'][0]['repo'],
+            'dockerfile': imagedetails['image_detail'][0]['dockerfile']
         }
     return imagesList
 
@@ -267,9 +268,10 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                 image_size, 
                 layer_count, 
                 registry, 
-                repo
+                repo,
+                dockerfile
             ) VALUES (
-                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}'
+                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}'
             )'''
             .format(
                 image['uid'],
@@ -285,7 +287,8 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                 image['image_size'],
                 image['layer_count'],
                 image['registry'],
-                image['repo']
+                image['repo'],
+                image['dockerfile']
         ))
     
     for image_uid, imageSummary in imageVulnSummary.items():

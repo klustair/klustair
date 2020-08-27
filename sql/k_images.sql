@@ -18,6 +18,7 @@ CREATE TABLE public.k_images
     registry character varying COLLATE pg_catalog."default",
     repo character varying COLLATE pg_catalog."default",
     report_uid character varying COLLATE pg_catalog."default",
+    dockerfile text COLLATE pg_catalog."default",
     CONSTRAINT k_images_report_uid_fkey FOREIGN KEY (report_uid)
         REFERENCES public.k_reports (uid) MATCH SIMPLE
         ON UPDATE NO ACTION
