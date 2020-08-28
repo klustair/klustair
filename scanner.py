@@ -136,6 +136,18 @@ def getImageDetailsList(uniqueImagesList):
         }
     return imagesList
 
+def linkImagesToContainers(imagesList,containersList):
+    containerHasImage = []
+    for container in containersList: 
+        containerImage = {
+            'report_uid': report['uid'],
+            'container_uid': container['uid'],
+            'image_uid': imagesList[container['image']]['uid']
+        }
+        containerHasImage.append(containerImage)
+    
+    return containerHasImage
+
 def getImageVulnerabilities(imageDetailsList):
     print('INFO: Load Vulnerabilities')
     imageVulnList = {}
@@ -213,7 +225,7 @@ def awaitAnalysis():
     except:
         print("ERROR")
 
-def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList):
+def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
     print("INFO: Save data to DB")
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
@@ -378,6 +390,13 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                     vuln['vuln']
             ))
 
+    for item in containersHasImage:
+        cursor.execute("INSERT INTO k_container_has_images (report_uid, container_uid, image_uid) VALUES ('{0}', '{1}', '{2}')"
+            .format(
+                item['report_uid'], 
+                item['container_uid'], 
+                item['image_uid']
+        ))
     return
 
 def run():
@@ -400,12 +419,14 @@ def run():
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
 
+    containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
+    #pprint.pprint(containersHasImage)
 
     [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
 
-    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList)
+    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
 
 
