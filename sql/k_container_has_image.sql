@@ -4,9 +4,10 @@
 
 CREATE TABLE public.k_container_has_images
 (
-    container_uid uuid NOT NULL,
-    image_uid uuid NOT NULL,
-    report_uid character varying COLLATE pg_catalog."default",
+    report_uid character varying COLLATE pg_catalog."default" NOT NULL,
+    container_uid character varying COLLATE pg_catalog."default" NOT NULL,
+    image_uid character varying COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT k_container_has_images_pkey PRIMARY KEY (container_uid, report_uid),
     CONSTRAINT k_container_has_images_report_uid_fkey FOREIGN KEY (report_uid)
         REFERENCES public.k_reports (uid) MATCH SIMPLE
         ON UPDATE NO ACTION
