@@ -2,12 +2,17 @@
 FROM python:3.8-slim-buster
 
 ARG KUBECTL_VERSION="v1.17.0"
-ENV DOCKER_USER=""
-ENV DOCKER_PASS=""
 ENV ANCHORE_CLI_USER="admin"
 ENV ANCHORE_CLI_PASS="foobar"
 ENV ANCHORE_CLI_URL="http://172.17.0.1:8228"
 ENV KUBECONFIG="/kube.config"
+ENV DB_CONNECTION="dbname=postgres user=CHANGEME password=CHANGEME host=host.docker.internal port=5432"
+ENV DB_HOST=127.0.0.1
+ENV DB_PORT=5432
+ENV DB_DATABASE=postgres
+ENV DB_USERNAME=CHANGEME
+ENV DB_PASSWORD=CHANGEME
+
 
 #install kubectl
 RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2; \

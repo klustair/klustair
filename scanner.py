@@ -223,17 +223,18 @@ def awaitAnalysis():
         print("ABORT: Analysis aborted. No data was saved. ")
         sys.exit(0)
     except:
-        print("ERROR")
+        print("ERROR: Analysis aborted. No data was saved. ")
+        sys.exit(0)
 
 def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
     print("INFO: Save data to DB")
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
-    pdgbConnection = os.getenv('PGDBDB_CONNECTION', False)
-    pdgbDb = os.getenv('PGDBDB_db', 'postgres')
-    pdgbUser = os.getenv('PGDBDB_USER', False)
-    pdgbPass = os.getenv('PGDBDB_PASS', False)
-    pdgbHost = os.getenv('PGDBDB_HOST', '127.0.0.1')
-    pdgbPort = os.getenv('PGDBDB_PORT', '5432')
+    pdgbConnection = os.getenv('DB_CONNECTION', False)
+    pdgbDb = os.getenv('DB_DATABASE', 'postgres')
+    pdgbUser = os.getenv('DB_USERNAME', False)
+    pdgbPass = os.getenv('DB_PASSWORD', False)
+    pdgbHost = os.getenv('DB_HOST', '127.0.0.1')
+    pdgbPort = os.getenv('DB_PORT', '5432')
     
     if pdgbConnection:
         conn = psycopg2.connect(pdgbConnection)
