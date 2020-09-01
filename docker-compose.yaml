@@ -11,7 +11,14 @@ services:
     command: ["tail", "-f", "/dev/null"]
     restart: on-failure
     environment:
-      - MONGODB_CONNECTION=${MONGODB_CONNECTION}
+      - DB_CONNECTION=${DB_CONNECTION}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ANCHORE_CLI_USER=${ANCHORE_CLI_USER}
+      - ANCHORE_CLI_PASS=${ANCHORE_CLI_PASS}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
   klustair-frontend:
@@ -25,17 +32,12 @@ services:
       - APP_DEBUG=${APP_DEBUG}
       - APP_URL=${APP_URL}
       - LOG_CHANNEL=${LOG_CHANNEL}
-      - DB_CONNECTION=${DB_CONNECTION}
+      - DB_CONNECTION=pgsql
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_DATABASE=${DB_DATABASE}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - BROADCAST_DRIVER=${BROADCAST_DRIVER}
-      - CACHE_DRIVER=${CACHE_DRIVER}
-      - QUEUE_CONNECTION=${QUEUE_CONNECTION}
-      - SESSION_DRIVER=${SESSION_DRIVER}
-      - SESSION_LIFETIME=${SESSION_LIFETIME}
     ports:
       - 8080:80
   database:
