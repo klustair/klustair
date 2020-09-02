@@ -26,4 +26,4 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-COPY klusterstatus.py klusterstatus.py
+COPY scanner.py scanner.py
