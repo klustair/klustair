@@ -19,5 +19,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - ANCHORE_CLI_USER=${ANCHORE_CLI_USER}
       - ANCHORE_CLI_PASS=${ANCHORE_CLI_PASS}
+      - ANCHORE_URL=${ANCHORE_URL}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
+      - ./scanner.py:/scanner-dev.py
