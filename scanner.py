@@ -42,7 +42,7 @@ def getPods(nsList):
     print('INFO: Load Pod an Container informations')
 
     podsList=[]
-    containersList=[]
+    containersList={}
     for ns in nsList:
         pods = json.loads(subprocess.run(["kubectl", "get", "pods", "-n", ns['name'], "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         
@@ -54,7 +54,8 @@ def getPods(nsList):
                 'namespace_uid': ns['uid'],
                 'kubernetes_pod_uid': pod['metadata']['uid'],
                 'uid': podUid,
-                'creation_timestamp': pod['metadata']['creationTimestamp']
+                'creation_timestamp': pod['metadata']['creationTimestamp'],
+                'pod_json': json.dumps(pod)
             }
             log.debug("Pod: {}".format(p['podname']))
             #pprint.pprint(pod)
@@ -73,10 +74,9 @@ def getPods(nsList):
                     'init_container': False
                 }
                 log.debug("Container: {}".format(c['name']))
-                ### ADD CONTAINER STATUS !!!!
 
                 #pprint.pprint(container)
-                containersList.append(c)
+                containersList[c['name']] = c
 
             if 'initContainers' in pod['spec']:
                 for initContainer in pod['spec']['initContainers']:
@@ -93,13 +93,24 @@ def getPods(nsList):
                         'init_container': True
                     }
                     log.debug("initContainer: {}".format(c['name']))
-                    containersList.append(c)
+                    containersList[c['name']] = c
+
+            for containerStatus in pod['status']['containerStatuses']:
+                if containerStatus['name'] in containersList:
+                    if 'state' in containerStatus and 'running' in containerStatus['state']:
+                        startedAt = containerStatus['state']['running']['startedAt']
+                    containersList[containerStatus['name']].update([
+                        ('ready', containerStatus['ready']),
+                        ('started', containerStatus['started']),
+                        ('restartCount', containerStatus['restartCount']),
+                        ('startedAt', startedAt),
+                    ])
 
     return podsList, containersList
 
 def getImages(containersList):
     imagesList = []
-    for container in containersList:
+    for container in containersList.values():
         imagesList.append(container['image'])
     uniqueImagesList = list(set(imagesList))
 
@@ -138,7 +149,7 @@ def getImageDetailsList(uniqueImagesList):
 
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
-    for container in containersList: 
+    for container in containersList.values(): 
         containerImage = {
             'report_uid': report['uid'],
             'container_uid': container['uid'],
@@ -262,8 +273,24 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                 report['uid'], 
                 pod['creation_timestamp']))
 
-    for container in containersList:
-        cursor.execute("INSERT INTO k_containers(name, report_uid, namespace_uid, pod_uid, uid, image, image_pull_policy, security_context, init_container) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')"
+    for container in containersList.values():
+        cursor.execute('''INSERT INTO k_containers(
+                name, 
+                report_uid, 
+                namespace_uid, 
+                pod_uid, 
+                uid, 
+                image, 
+                image_pull_policy, 
+                security_context, 
+                init_container,
+                ready,
+                started,
+                restart_count,
+                started_at
+            ) VALUES (
+                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}'
+            )'''
             .format(
                 container['name'], 
                 report['uid'], 
@@ -273,7 +300,11 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
                 container['image'],
                 container['image_pull_policy'],
                 container['security_context'],
-                container['init_container']
+                container['init_container'],
+                container.get('ready', False),
+                container.get('started', False),
+                container.get('restartCount', 0),
+                container.get('startedAt', ''),
         ))
 
     for image in imageDetailsList.values():
