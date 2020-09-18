@@ -218,13 +218,13 @@ def awaitAnalysis():
     try:
         allAnalyzed = False
         while allAnalyzed == False:
-            print('INFO: waiting for images to be analysed')
             time.sleep(3)
             anchoreSyncStatus = json.loads(subprocess.run(["anchore-cli", "--json", "image", "list"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
             # Check if all images are analyzed
             for status in anchoreSyncStatus:
-                if status['analysis_status'] != 'analyzed':
+                if status['analysis_status'] == 'analyzing':
+                    print('INFO: waiting for image {0} to be analysed'.format(status['image_detail']['fulltag']))
                     allAnalyzed = False
                     break
                 else: 
