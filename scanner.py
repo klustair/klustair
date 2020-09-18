@@ -238,7 +238,6 @@ def awaitAnalysis():
         sys.exit(0)
 
 def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
-    print("INFO: Save data to DB")
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('DB_CONNECTION', False)
     pdgbDb = os.getenv('DB_DATABASE', 'postgres')
@@ -247,12 +246,19 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
     pdgbHost = os.getenv('DB_HOST', '127.0.0.1')
     pdgbPort = os.getenv('DB_PORT', '5432')
     
+    conn = None
     if pdgbConnection:
         conn = psycopg2.connect(pdgbConnection)
-    elif pdgbUser and pdgbUser: 
+    elif pdgbDb and pdgbUser and pdgbPass and pdgbHost and pdgbPort: 
         conn = psycopg2.connect(
             database=pdgbDb, user=pdgbUser, password=pdgbPass, host=pdgbHost, port= pdgbPort
         )
+    
+    if conn == None:
+        print("INFO: No Data saved to DB")
+        return
+    
+    print("INFO: Save data to DB")
 
     conn.autocommit = True
     cursor = conn.cursor()
