@@ -38,6 +38,45 @@ def getNamespaces():
 
     return nsList
 
+def getKubeaudits(nsList):
+    namespaceAudits = {}
+    if 'none' in kubeaudit:
+        return namespaceAudits
+
+    print('INFO: Run Kubeaudit')
+    for kubeauditCommand in kubeaudit:
+        for ns in nsList:
+            log.debug("Kubeaudit: audit {} on {}".format(kubeauditCommand, ns['name']))
+            results = subprocess.run(["kubeaudit", kubeauditCommand, "-c", "/Users/carafagi/Downloads/kubeaudit_0.11.2_darwin_amd64/test.config", "-n", ns['name'], "-p=json"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip().split('\n')
+            nsUid = ns['uid']
+            namespaceAudits[nsUid] = {
+                'auditItems': []
+            }
+            for result in results:
+                try:
+                    audit = json.loads(result)
+                except:
+                    break
+
+                audit['uid'] = str(uuid.uuid4())
+
+
+                if audit['ResourceKind'] == 'Deployment' and 'Container' in audit: 
+                    audit['audit_type'] = 'container'
+                elif audit['ResourceKind'] == 'Deployment': 
+                    audit['audit_type'] = 'pod'
+                elif audit['ResourceKind'] == 'Namespace':
+                    audit['audit_type'] = 'namespace'
+                else:
+                    print("not categorized: {}".format(audit['AuditResultName']))
+                    audit['audit_type'] = 'unknown'
+                    
+                namespaceAudits[nsUid]['auditItems'].append(audit)
+
+    #pprint.pprint(namespaceAudits)
+    #sys.exit()
+    return namespaceAudits
+
 def getPods(nsList):
     print('INFO: Load Pod an Container informations')
 
@@ -237,7 +276,7 @@ def awaitAnalysis():
         print("ERROR: Analysis aborted. No data was saved. ")
         sys.exit(0)
 
-def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
+def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('DB_CONNECTION', False)
     pdgbDb = os.getenv('DB_DATABASE', 'postgres')
@@ -268,6 +307,71 @@ def saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVu
     for ns in nsList:
         cursor.execute("INSERT INTO k_namespaces(name, kubernetes_namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}')"
             .format(ns['name'], ns['kubernetes_namespace_uid'], ns['uid'], report['uid'], ns['creation_timestamp']))
+
+    '''
+    {'AuditResultName': 'AutomountServiceAccountTokenTrueAndDefaultSA',
+    'ResourceApiVersion': 'apps/v1',
+    'ResourceKind': 'Deployment',
+    'ResourceName': 'klustair-anchore-engine-analyzer',
+    'ResourceNamespace': 'klustair',
+    'level': 'error',
+    'msg': 'Default service account with token mounted. '
+            "automountServiceAccountToken should be set to 'false' on either the "
+            'ServiceAccount or on the PodSpec or a non-default service account '
+            'should be used.',
+    'time': '2020-09-21T16:18:09+02:00'}
+    '''
+
+    #pprint.pprint(namespaceAudits)
+    for nsuid, namespaceAudit in namespaceAudits.items():
+        for audit in namespaceAudit['auditItems']: 
+            #pprint.pprint(namespaceAudit)
+            cursor.execute('''INSERT INTO k_audits(
+                    uid, 
+                    namespace_uid, 
+                    report_uid, 
+                    audit_type, 
+                    audit_name, 
+                    msg, 
+                    severity_level, 
+                    audit_time,
+                    resource_name,
+                    capability,
+                    container,
+                    missing_annotation,
+                    resource_namespace,
+                    resource_api_version
+                ) VALUES (
+                    '{uid}', 
+                    '{namespace_uid}', 
+                    '{report_uid}', 
+                    '{audit_type}', 
+                    '{audit_name}', 
+                    '{msg}', 
+                    '{severity_level}', 
+                    '{audit_time}', 
+                    '{resource_name}', 
+                    '{capability}', 
+                    '{container}', 
+                    '{missing_annotation}', 
+                    '{resource_namespace}', 
+                    '{resource_api_version}')'''
+                .format(
+                    uid=audit['uid'],
+                    namespace_uid=nsuid, 
+                    report_uid=report['uid'],
+                    audit_type=audit['audit_type'],
+                    audit_name=audit['AuditResultName'],
+                    msg=audit['msg'].replace('\'', '"'), 
+                    severity_level=audit['level'], 
+                    audit_time=audit['time'], 
+                    resource_name=audit['ResourceName'], 
+                    capability=audit.get('Capability', ''),
+                    container=audit.get('Container', ''),
+                    missing_annotation=audit.get('MissingAnnotation', ''),
+                    resource_namespace=audit['ResourceNamespace'], 
+                    resource_api_version=audit['ResourceApiVersion']))
+                    
 
     for pod in podsList:
         cursor.execute("INSERT INTO k_pods(podname, kubernetes_pod_uid, namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}')"
@@ -444,6 +548,9 @@ def run():
     nsList = getNamespaces()
     #pprint.pprint(nsList)
 
+    namespaceAudits = getKubeaudits(nsList)
+    #pprint.pprint(namespaceAudits)
+
     [podsList, containersList] = getPods(nsList)
     #pprint.pprint(podsList)
     #pprint.pprint(containersList)
@@ -464,7 +571,7 @@ def run():
     #pprint.pprint(imageVulnList)
     #pprint.pprint(imageVulnSummary)
 
-    saveToDB(report, nsList, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
+    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
 
 
@@ -475,7 +582,7 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
     parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-c", "--capabilities", required=False, help="Coma separated whitelist of capabilities to check")
-    parser.add_argument("-o", "--output", default='cli', choices=['cli', 'json'], help="report format")
+    parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
 
     args = parser.parse_args()
     if args.verbose:
@@ -492,5 +599,9 @@ if __name__ == '__main__':
     capabilitiesWhitelist = []
     if args.capabilities:
         capabilitiesWhitelist = args.capabilities.split(',')
+
+    kubeaudit = []
+    if args.kubeaudit:
+        kubeaudit = args.kubeaudit.split(',')
 
     run()
