@@ -187,17 +187,18 @@ def getImageDetailsList(uniqueImagesList):
         }
     return imagesList
 
-def checkContainerActuality(containersList, imageDetailsList): 
-    print('INFO: Check container actuality')
-    for container in containersList.values(): 
-        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-        if (image_created_at_date > container_started_at_date):
-            print("OK  {} > {}".format(str(image_created_at_date), str(container_started_at_date)))
-        else:
-            print("ERROR")
-        log.debug("Check Image: {image_created_at} > {container_started_at} {name} {image}".format( name=container['name'], image=container['image'], container_started_at=container['startedAt'], image_created_at=imageDetailsList[container['image']]['created_at'] ))
-    return
+# NOT Working yet, waiting for a good idea
+#def checkContainerActuality(containersList, imageDetailsList): 
+#    print('INFO: Check container actuality')
+#    for container in containersList.values(): 
+#        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+#        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+#        if (image_created_at_date > container_started_at_date):
+#            print("OK  {} > {}".format(str(image_created_at_date), str(container_started_at_date)))
+#        else:
+#            print("ERROR")
+#        log.debug("Check Image: {image_created_at} > {container_started_at} {name} {image}".format( name=container['name'], image=container['image'], container_started_at=container['startedAt'], image_created_at=imageDetailsList[container['image']]['created_at'] ))
+#    return
 
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
@@ -276,7 +277,7 @@ def awaitAnalysis():
             # Check if all images are analyzed
             for status in anchoreSyncStatus:
                 if status['analysis_status'] == 'analyzing':
-                    print('INFO: waiting for image {0} to be analysed'.format(status['image_detail']['fulltag']))
+                    print('INFO: waiting for image {0} to be analysed'.format(status['image_detail'][0]['fulltag']))
                     allAnalyzed = False
                     break
                 else: 
