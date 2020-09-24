@@ -44,10 +44,11 @@ def getKubeaudits(nsList):
         return namespaceAudits
 
     print('INFO: Run Kubeaudit')
+    kubeconfig = os.getenv('KUBECONFIG', "/configs/kube.config")
     for kubeauditCommand in kubeaudit:
         for ns in nsList:
             log.debug("Kubeaudit: audit {} on {}".format(kubeauditCommand, ns['name']))
-            results = subprocess.run(["kubeaudit", kubeauditCommand, "-c", "/Users/carafagi/Downloads/kubeaudit_0.11.2_darwin_amd64/test.config", "-n", ns['name'], "-p=json"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip().split('\n')
+            results = subprocess.run(["kubeaudit", kubeauditCommand, "-c", kubeconfig, "-n", ns['name'], "-p=json"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip().split('\n')
             nsUid = ns['uid']
             namespaceAudits[nsUid] = {
                 'auditItems': []
@@ -186,6 +187,18 @@ def getImageDetailsList(uniqueImagesList):
         }
     return imagesList
 
+def checkContainerActuality(containersList, imageDetailsList): 
+    print('INFO: Check container actuality')
+    for container in containersList.values(): 
+        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+        if (image_created_at_date > container_started_at_date):
+            print("OK  {} > {}".format(str(image_created_at_date), str(container_started_at_date)))
+        else:
+            print("ERROR")
+        log.debug("Check Image: {image_created_at} > {container_started_at} {name} {image}".format( name=container['name'], image=container['image'], container_started_at=container['startedAt'], image_created_at=imageDetailsList[container['image']]['created_at'] ))
+    return
+
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
     for container in containersList.values(): 
@@ -272,9 +285,9 @@ def awaitAnalysis():
     except (KeyboardInterrupt, SystemExit):
         print("ABORT: Analysis aborted. No data was saved. ")
         sys.exit(0)
-    except:
-        print("ERROR: Analysis aborted. No data was saved. ")
-        sys.exit(0)
+    #except:
+    #    print("ERROR: Analysis aborted. No data was saved. ")
+    #    sys.exit(0)
 
 def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
@@ -563,6 +576,9 @@ def run():
     awaitAnalysis()
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
+
+    #checkContainerActuality(containersList, imageDetailsList)
+    #sys.exit()
 
     containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
     #pprint.pprint(containersHasImage)
