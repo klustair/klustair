@@ -62,13 +62,14 @@ def getKubeaudits(nsList):
                 audit['uid'] = str(uuid.uuid4())
 
 
-                if audit['ResourceKind'] == 'Deployment' and 'Container' in audit: 
+                if 'Container' in audit: 
                     audit['audit_type'] = 'container'
                 elif audit['ResourceKind'] == 'Deployment': 
                     audit['audit_type'] = 'pod'
                 elif audit['ResourceKind'] == 'Namespace':
                     audit['audit_type'] = 'namespace'
                 else:
+                    #pprint.pprint(audit)
                     print("not categorized: {}".format(audit['AuditResultName']))
                     audit['audit_type'] = 'unknown'
                     
