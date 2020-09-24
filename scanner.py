@@ -66,6 +66,8 @@ def getKubeaudits(nsList):
                     audit['audit_type'] = 'container'
                 elif audit['ResourceKind'] == 'Deployment': 
                     audit['audit_type'] = 'pod'
+                elif audit['ResourceKind'] == 'StatefulSet': 
+                    audit['audit_type'] = 'pod'
                 elif audit['ResourceKind'] == 'Namespace':
                     audit['audit_type'] = 'namespace'
                 else:
