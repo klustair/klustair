@@ -325,20 +325,6 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDet
         cursor.execute("INSERT INTO k_namespaces(name, kubernetes_namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}')"
             .format(ns['name'], ns['kubernetes_namespace_uid'], ns['uid'], report['uid'], ns['creation_timestamp']))
 
-    '''
-    {'AuditResultName': 'AutomountServiceAccountTokenTrueAndDefaultSA',
-    'ResourceApiVersion': 'apps/v1',
-    'ResourceKind': 'Deployment',
-    'ResourceName': 'klustair-anchore-engine-analyzer',
-    'ResourceNamespace': 'klustair',
-    'level': 'error',
-    'msg': 'Default service account with token mounted. '
-            "automountServiceAccountToken should be set to 'false' on either the "
-            'ServiceAccount or on the PodSpec or a non-default service account '
-            'should be used.',
-    'time': '2020-09-21T16:18:09+02:00'}
-    '''
-
     #pprint.pprint(namespaceAudits)
     for nsuid, namespaceAudit in namespaceAudits.items():
         for audit in namespaceAudit['auditItems']: 
@@ -601,7 +587,6 @@ if __name__ == '__main__':
     parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
     parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
-    parser.add_argument("-c", "--capabilities", required=False, help="Coma separated whitelist of capabilities to check")
     parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
 
     args = parser.parse_args()

@@ -3,18 +3,17 @@
 # <a href='https://github.com/mms-gianni/klustair'>KlustAIR Scanner</a>
 The Klustair scanner scanns your Kubernetes namespaces for the used images and submits them to Anchore. This is the scanner part. 
 
-### Related Projects: 
+### Related Klustair projects: 
 - <a href="https://github.com/mms-gianni/klustair-frontend">Klustair Frontend</a> to view the scanner results
 - <a href="https://github.com/mms-gianni/klustair-helm">Klustair Helm charts</a> to spin up Anchore and Klustair
+
+### Related opensource projects
+- <a href="https://github.com/anchore/anchore-engine">anchore-engine</a> A service that analyzes docker images and applies user-defined acceptance policies to allow automated container image validation and certification
+- <a href="https://github.com/Shopify/kubeaudit">kubeaudit</a> kubeaudit helps you audit your Kubernetes clusters against common security controls
 
 ## Requirements
  - Python 3
  - Running Anchore (See docker-compose-anchore.yaml)
-
-## Todo
- - [] Check actuality of an image
- - [] Run checks on the kubernets configuration
- - [] Run Checks on Secrets and Configs
 
 ## Usage
 ```
@@ -28,6 +27,9 @@ optional arguments:
                         Coma separated whitelist of Namespaces to check
   -N NAMESPACESBLACKLIST, --namespacesblacklist NAMESPACESBLACKLIST
                         Coma separated blacklist of Namespaces to skip
+  -k KUBEAUDIT, --kubeaudit KUBEAUDIT
+                        Coma separated list of audits to run. default: 'all',
+                        disable: 'none'
 ````
 
 ## Run in Docker
