@@ -30,7 +30,7 @@ optional arguments:
                         Coma separated blacklist of Namespaces to skip
 ````
 
-## Run in Dockeer
+## Run in Docker
 ```
 cp .env.example .env
 vim .env
