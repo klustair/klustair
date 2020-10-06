@@ -30,6 +30,8 @@ optional arguments:
   -k KUBEAUDIT, --kubeaudit KUBEAUDIT
                         Coma separated list of audits to run. default: 'all',
                         disable: 'none'
+  -t TITLE, --title TITLE
+                        A optional title for your run
 ````
 
 ## Run in Docker

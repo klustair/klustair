@@ -266,6 +266,7 @@ def createReport():
     reportUid = str(uuid.uuid4())
     report = {
         'uid': reportUid,
+        'title': args.title
     }
 
     return report
@@ -319,7 +320,7 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDet
     conn.autocommit = True
     cursor = conn.cursor()
 
-    cursor.execute("INSERT INTO k_reports(uid, checktime) VALUES ('{0}', current_timestamp)".format(report['uid']))
+    cursor.execute("INSERT INTO k_reports(uid, checktime, title) VALUES ('{0}', current_timestamp, '{1}')".format(report['uid'], report['title']))
 
     for ns in nsList:
         cursor.execute("INSERT INTO k_namespaces(name, kubernetes_namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}')"
@@ -588,6 +589,7 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
     parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
+    parser.add_argument("-t", "--title", default='', required=False, help="A optional title for your run" )
 
     args = parser.parse_args()
     if args.verbose:
@@ -600,10 +602,6 @@ if __name__ == '__main__':
     namespacesBlacklist = []
     if args.namespacesblacklist:
         namespacesBlacklist = args.namespacesblacklist.split(',')
-
-    capabilitiesWhitelist = []
-    if args.capabilities:
-        capabilitiesWhitelist = args.capabilities.split(',')
 
     kubeaudit = []
     if args.kubeaudit:
