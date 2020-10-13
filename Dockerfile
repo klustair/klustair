@@ -32,4 +32,4 @@ COPY --from=aquasec/trivy /usr/local/bin/trivy /usr/local/bin/trivy
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-COPY scanner.py scanner.py
+COPY runner.py runner.py
