@@ -191,17 +191,17 @@ def getImageDetailsList(uniqueImagesList):
     return imagesList
 
 # NOT Working yet, waiting for a good idea
-#def checkContainerActuality(containersList, imageDetailsList): 
-#    print('INFO: Check container actuality')
-#    for container in containersList.values(): 
-#        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-#        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-#        if (image_created_at_date > container_started_at_date):
-#            print("OK  {} > {}".format(str(image_created_at_date), str(container_started_at_date)))
-#        else:
-#            print("ERROR")
-#        log.debug("Check Image: {image_created_at} > {container_started_at} {name} {image}".format( name=container['name'], image=container['image'], container_started_at=container['startedAt'], image_created_at=imageDetailsList[container['image']]['created_at'] ))
-#    return
+def checkContainerActuality(containersList, imageDetailsList): 
+    print('INFO: Check container actuality')
+    for container in containersList.values(): 
+        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+        if (image_created_at_date > container_started_at_date):
+            actuality = 'ERROR'
+        else:
+            actuality = 'OK   '
+        log.debug("Image actuality: {actuality} created:{image_created_at} started:{container_started_at} {name} {image}".format(actuality=actuality, name=container['name'], image=container['image'], container_started_at=str(container_started_at_date), image_created_at=str(image_created_at_date)))
+    return
 
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
@@ -568,8 +568,8 @@ def run():
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
 
-    #checkContainerActuality(containersList, imageDetailsList)
-    #sys.exit()
+    checkContainerActuality(containersList, imageDetailsList)
+    sys.exit()
 
     containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
     #pprint.pprint(containersHasImage)
