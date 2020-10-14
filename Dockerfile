@@ -15,7 +15,7 @@ ENV DB_PASSWORD=
 
 
 #install kubectl
-RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2; \
+RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2 rpm; \
 echo https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
 curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl ; \
 chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl

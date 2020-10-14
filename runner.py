@@ -153,9 +153,13 @@ def getPods(nsList):
 
 def getImages(containersList):
     imagesList = []
+    uniqueImagesList = {}
     for container in containersList.values():
         imagesList.append(container['image'])
-    uniqueImagesList = list(set(imagesList))
+
+    for image in list(set(imagesList)):
+        imageUid = str(uuid.uuid4())
+        uniqueImagesList[imageUid] = image
 
     return uniqueImagesList
 
@@ -168,10 +172,10 @@ def submitImagesToAnchore(uniqueImagesList):
 def getImageDetailsList(uniqueImagesList):
     print('INFO: Load imagedetails')
     imagesList = {}
-    for image in uniqueImagesList:
+    for imageUid, image in uniqueImagesList.items():
         log.debug("Load Image: {}".format(image))
         imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
-        imageUid = str(uuid.uuid4())
+        
         imagesList[image] = {
             'uid': imageUid,
             'anchore_imageid': imagedetails['image_detail'][0]['imageId'],
@@ -189,6 +193,53 @@ def getImageDetailsList(uniqueImagesList):
             'dockerfile': imagedetails['image_detail'][0]['dockerfile']
         }
     return imagesList
+
+def getImageTrivies(uniqueImagesList):
+    print('INFO: Load trivy Vulnerabilities')
+    imageTryviVulnList = {}
+    for imageUid, image in uniqueImagesList.items():
+        log.debug("Load Vuln: {}".format(image))
+        print("Load Vuln: {}".format(image))
+        vulnsum = {
+            'CRITICAL': {
+                'total': 0,
+                'fixed': 0
+            },
+            'HIGH': {
+                'total': 0,
+                'fixed': 0
+            },
+            'MEDIUM': {
+                'total': 0,
+                'fixed': 0
+            },
+            'LOW': {
+                'total': 0,
+                'fixed': 0
+            },
+            'UNKNOWN': {
+                'total': 0,
+                'fixed': 0
+            }
+        }
+
+        imageVuln = json.loads(subprocess.run(["trivy", "-q", "i", "-f", "json", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+
+        # skip empty images like busybox
+        if type(imageVuln) is not list:
+            continue
+        
+        imageTryviVulnList[imageUid] = []
+        for target in imageVuln:
+            for vulnerability in target['Vulnerabilities']:
+                vulnsum[vulnerability['Severity']]['total'] += 1
+                if 'FixedVersion' in vulnerability:
+                    vulnsum[vulnerability['Severity']]['fixed'] += 1
+            target['summary'] = vulnsum
+            imageTryviVulnList[imageUid].append(target)
+            
+
+    return imageTryviVulnList
 
 # NOT Working yet, waiting for a good idea
 def checkContainerActuality(containersList, imageDetailsList): 
@@ -561,6 +612,10 @@ def run():
 
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
+
+    [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivies(uniqueImagesList)
+    #pprint.pprint(imageTrivyVulnList)
+    #pprint.pprint(imageTrivyVulnSummary)
 
     submitImagesToAnchore(uniqueImagesList)
     
