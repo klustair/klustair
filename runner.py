@@ -568,8 +568,8 @@ def run():
 
     imageDetailsList = getImageDetailsList(uniqueImagesList)
 
-    checkContainerActuality(containersList, imageDetailsList)
-    sys.exit()
+    #checkContainerActuality(containersList, imageDetailsList)
+    #sys.exit()
 
     containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
     #pprint.pprint(containersHasImage)
