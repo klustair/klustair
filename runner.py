@@ -608,6 +608,65 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                     vuln['url'],
                     vuln['vuln']
             ))
+    
+
+    for image_uid, vulnList in imageTrivyVulnList.items():
+        pprint.pprint(vulnList)
+        for target in vulnList:
+            for vuln in target:
+                vulnUid = str(uuid.uuid4())
+                
+                cursor.execute('''INSERT INTO k_images_trivyvuln(
+                        uid
+                        image_uid, 
+                        report_uid, 
+                        vulnerability_id,
+                        pkg_name,
+                        descr,
+                        title,
+                        installed_version,
+                        fixed_version,
+                        severity_source,
+                        severity,
+                        last_modified_date,
+                        published_date,
+                        ref,
+                        cvss
+                    ) VALUES (
+                        '{uid}', 
+                        '{image_uid}', 
+                        '{report_uid}', 
+                        '{vulnerability_id}',
+                        '{pkg_name}',
+                        '{descr}',
+                        '{title}',
+                        '{installed_version}',
+                        '{fixed_version}',
+                        '{severity_source}',
+                        '{severity}',
+                        '{last_modified_date}',
+                        '{published_date}',
+                        '{ref}',
+                        '{cvss}'
+                    )'''
+                    .format(
+                        uid=vulnUid,
+                        image_uid=image_uid, 
+                        report_uid=report['uid'], 
+                        vulnerability_id=vuln['VulnerabilityID'],
+                        pkg_name=vuln['PkgName'],
+                        descr=vuln['Description'],
+                        title=vuln['Title'],
+                        installed_version=vuln['InstalledVersion'],
+                        fixed_version=vuln['FixedVersion'],
+                        severity_source=vuln['SeveritySource'],
+                        severity=vuln['Severity'],
+                        last_modified_date=vuln['LastModifiedDate'],
+                        published_date=vuln['PublishedDate'],
+                        ref=vuln['References'],
+                        cvss=vuln['CVSS'],
+                ))
+
 
     for item in containersHasImage:
         cursor.execute("INSERT INTO k_container_has_images (report_uid, container_uid, image_uid) VALUES ('{0}', '{1}', '{2}')"
