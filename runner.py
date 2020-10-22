@@ -287,12 +287,14 @@ def checkContainerActuality(containersList, imageDetailsList):
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
     for container in containersList.values(): 
-        containerImage = {
-            'report_uid': report['uid'],
-            'container_uid': container['uid'],
-            'image_uid': imagesList[container['image']]['uid']
-        }
-        containerHasImage.append(containerImage)
+        for image_uid, image in imagesList.items():
+            if container['image'] == image:
+                containerImage = {
+                    'report_uid': report['uid'],
+                    'container_uid': container['uid'],
+                    'image_uid': image_uid
+                }
+                containerHasImage.append(containerImage)
     
     return containerHasImage
 
@@ -347,7 +349,7 @@ def createReport():
     reportUid = str(uuid.uuid4())
     report = {
         'uid': reportUid,
-        'title': args.title
+        'title': args.label
     }
 
     return report
@@ -702,25 +704,36 @@ def run():
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
-    [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList)
-    #pprint.pprint(imageTrivyVulnList)
-    #pprint.pprint(imageTrivyVulnSummary)
 
-    #submitImagesToAnchore(uniqueImagesList)
+    if (args.trivy == True):
+        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList)
+        #pprint.pprint(imageTrivyVulnList)
+        #pprint.pprint(imageTrivyVulnSummary)
+    else:
+        imageTrivyVulnList = {}
+        imageTrivyVulnSummary = {}
+
+    if (args.anchore == True):
+        submitImagesToAnchore(uniqueImagesList)
     
-    awaitAnalysis()
+        awaitAnalysis()
 
-    imageDetailsList = getImageDetailsList(uniqueImagesList)
+        imageDetailsList = getImageDetailsList(uniqueImagesList)
 
-    #checkContainerActuality(containersList, imageDetailsList)
-    #sys.exit()
+        #checkContainerActuality(containersList, imageDetailsList)
+        #sys.exit()
 
-    containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
+        [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
+        #pprint.pprint(imageVulnList)
+        #pprint.pprint(imageVulnSummary)
+    else:
+        imageDetailsList = {}
+        imageVulnList = {}
+        imageVulnSummary = {}
+
+    
+    containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #pprint.pprint(containersHasImage)
-
-    [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
-    #pprint.pprint(imageVulnList)
-    #pprint.pprint(imageVulnSummary)
 
     saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageTrivyVulnSummary, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
@@ -733,7 +746,9 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
     parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
-    parser.add_argument("-t", "--title", default='', required=False, help="A optional title for your run" )
+    parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
+    parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
+    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
 
     args = parser.parse_args()
     if args.verbose:
