@@ -11,6 +11,7 @@ import time
 import pprint
 import uuid
 import psycopg2
+from psycopg2.extras import Json
 from cvss import CVSS2, CVSS3
 
 report = {}
@@ -203,22 +204,27 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
         log.debug("run Trivy on: {}".format(image))
         vulnsum = {
             'CRITICAL': {
+                'severity': 0,
                 'total': 0,
                 'fixed': 0
             },
             'HIGH': {
+                'severity': 1,
                 'total': 0,
                 'fixed': 0
             },
             'MEDIUM': {
+                'severity': 2,
                 'total': 0,
                 'fixed': 0
             },
             'LOW': {
+                'severity': 3,
                 'total': 0,
                 'fixed': 0
             },
             'UNKNOWN': {
+                'severity': 4,
                 'total': 0,
                 'fixed': 0
             }
@@ -251,6 +257,8 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
                             vectors['V2Vector_metrics']=cvss.metrics
                             #print("   CVSS2 {provider} {base_score}  {vector}".format(provider=provider, base_score=vectors['V2Vector_base_score'], vector=vectors['V2Vector']))
                             
+                if 'Severity' in vulnerability:
+                    vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity']]['severity']
 
                 vulnsum[vulnerability['Severity']]['total'] += 1
                 if 'FixedVersion' in vulnerability:
@@ -611,26 +619,26 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
     
 
     for image_uid, vulnList in imageTrivyVulnList.items():
-        pprint.pprint(vulnList)
         for target in vulnList:
-            for vuln in target:
+            #pprint.pprint(target)
+            for vuln in target['Vulnerabilities']:
                 vulnUid = str(uuid.uuid4())
                 
                 cursor.execute('''INSERT INTO k_images_trivyvuln(
-                        uid
+                        uid,
                         image_uid, 
                         report_uid, 
                         vulnerability_id,
                         pkg_name,
-                        descr,
                         title,
+                        descr,
                         installed_version,
                         fixed_version,
                         severity_source,
                         severity,
                         last_modified_date,
                         published_date,
-                        ref,
+                        links,
                         cvss
                     ) VALUES (
                         '{uid}', 
@@ -638,33 +646,33 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                         '{report_uid}', 
                         '{vulnerability_id}',
                         '{pkg_name}',
-                        '{descr}',
                         '{title}',
+                        '{descr}',
                         '{installed_version}',
                         '{fixed_version}',
                         '{severity_source}',
                         '{severity}',
                         '{last_modified_date}',
                         '{published_date}',
-                        '{ref}',
-                        '{cvss}'
+                        {links},
+                        {cvss}
                     )'''
                     .format(
                         uid=vulnUid,
                         image_uid=image_uid, 
                         report_uid=report['uid'], 
-                        vulnerability_id=vuln['VulnerabilityID'],
+                        vulnerability_id=vuln.get('VulnerabilityID', ''),
                         pkg_name=vuln['PkgName'],
-                        descr=vuln['Description'],
-                        title=vuln['Title'],
-                        installed_version=vuln['InstalledVersion'],
-                        fixed_version=vuln['FixedVersion'],
-                        severity_source=vuln['SeveritySource'],
-                        severity=vuln['Severity'],
-                        last_modified_date=vuln['LastModifiedDate'],
-                        published_date=vuln['PublishedDate'],
-                        ref=vuln['References'],
-                        cvss=vuln['CVSS'],
+                        title=vuln.get('Title', '').replace("'", "''"),
+                        descr=vuln.get('Description', '').replace("'", "''"),
+                        installed_version=vuln.get('InstalledVersion', ''),
+                        fixed_version=vuln.get('FixedVersion', ''),
+                        severity_source=vuln.get('SeveritySource', ''),
+                        severity=vuln['SeverityInt'],
+                        last_modified_date=vuln.get('LastModifiedDate', ''),
+                        published_date=vuln.get('PublishedDate', ''),
+                        links=Json(json.loads(json.dumps(vuln.get('References', '')))),
+                        cvss=Json(json.loads(json.dumps(vuln.get('CVSS', ''))))
                 ))
 
 
@@ -698,7 +706,7 @@ def run():
     #pprint.pprint(imageTrivyVulnList)
     #pprint.pprint(imageTrivyVulnSummary)
 
-    submitImagesToAnchore(uniqueImagesList)
+    #submitImagesToAnchore(uniqueImagesList)
     
     awaitAnalysis()
 
