@@ -161,25 +161,28 @@ def getImages(containersList):
 
     for image in list(set(imagesList)):
         imageUid = str(uuid.uuid4())
-        uniqueImagesList[imageUid] = image
+        uniqueImagesList[imageUid] = {
+            'uid': imageUid,
+            'image': image
+        }
 
     return uniqueImagesList
 
 def submitImagesToAnchore(uniqueImagesList):
     print('INFO: Submit images to Anchore')
-    for image in uniqueImagesList:
-        json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-        log.debug("Submitted Image: {}".format(image))
+    for image in uniqueImagesList.values():
+        json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        log.debug("Submitted Image: {}".format(image['image']))
 
 def getImageDetailsList(uniqueImagesList):
     print('INFO: Load imagedetails')
-    imagesList = {}
     for imageUid, image in uniqueImagesList.items():
-        log.debug("Load Image: {}".format(image))
-        imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
+        log.debug("Load Image: {}".format(uniqueImagesList[imageUid]['image']))
+        imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", uniqueImagesList[imageUid]['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
         
-        imagesList[image] = {
-            'uid': imageUid,
+        uniqueImagesList[imageUid] = {
+            'image': image['image'],
+            'uid': image['uid'],
             'anchore_imageid': imagedetails['image_detail'][0]['imageId'],
             'analyzed_at': imagedetails['analyzed_at'],
             'created_at': imagedetails['created_at'],
@@ -194,7 +197,7 @@ def getImageDetailsList(uniqueImagesList):
             'repo': imagedetails['image_detail'][0]['repo'],
             'dockerfile': imagedetails['image_detail'][0]['dockerfile']
         }
-    return imagesList
+    return uniqueImagesList
 
 def getImageTrivyVulnerabilities(uniqueImagesList):
     print('INFO: Load trivy Vulnerabilities')
@@ -230,7 +233,7 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
             }
         }
 
-        imageVuln = json.loads(subprocess.run(["trivy", "-q", "i", "-f", "json", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        imageVuln = json.loads(subprocess.run(["trivy", "-q", "i", "-f", "json", image['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
 
         # skip empty images like busybox
         if type(imageVuln) is not list:
@@ -288,7 +291,7 @@ def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
     for container in containersList.values(): 
         for image_uid, image in imagesList.items():
-            if container['image'] == image:
+            if container['image'] == image['image']:
                 containerImage = {
                     'report_uid': report['uid'],
                     'container_uid': container['uid'],
@@ -302,8 +305,8 @@ def getImageVulnerabilities(imageDetailsList):
     print('INFO: Load Vulnerabilities')
     imageVulnList = {}
     imageVulnSummary = {}
-    for image, imagedetails in imageDetailsList.items():
-        log.debug("Load Vuln: {}".format(image))
+    for image in imageDetailsList.values():
+        log.debug("Load Vuln: {}".format(image['image']))
         vulnsum = {
             'Critical': {
                 'total': 0,
@@ -331,14 +334,14 @@ def getImageVulnerabilities(imageDetailsList):
             }
         }
 
-        imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image, 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image['image'], 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         
         for vulnerability in imageVuln['vulnerabilities']:
             vulnsum[vulnerability['severity']]['total'] += 1
             if vulnerability['fix'] != 'None':
                 vulnsum[vulnerability['severity']]['fixed'] += 1
 
-        image_uid = imagedetails['uid']
+        image_uid = image['uid']
         imageVulnList[image_uid] = imageVuln['vulnerabilities']
         imageVulnSummary[image_uid] = vulnsum
     
@@ -505,6 +508,7 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
         ))
 
     for image in imageDetailsList.values():
+        pprint.pprint(image)
         cursor.execute('''INSERT INTO k_images(
                 uid, 
                 report_uid, 
@@ -704,6 +708,8 @@ def run():
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
+    #checkContainerActuality(containersList, imageDetailsList)
+    #sys.exit()
 
     if (args.trivy == True):
         [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList)
@@ -720,10 +726,7 @@ def run():
 
         imageDetailsList = getImageDetailsList(uniqueImagesList)
 
-        #checkContainerActuality(containersList, imageDetailsList)
-        #sys.exit()
-
-        [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
+        [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
         #pprint.pprint(imageVulnList)
         #pprint.pprint(imageVulnSummary)
     else:
@@ -735,7 +738,7 @@ def run():
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #pprint.pprint(containersHasImage)
 
-    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageTrivyVulnSummary, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
+    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageTrivyVulnSummary, uniqueImagesList, imageVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
 
 
