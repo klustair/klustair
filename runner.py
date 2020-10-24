@@ -531,19 +531,19 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
             .format(
                 image['uid'],
                 report['uid'], 
-                image['anchore_imageid'],
-                image['analyzed_at'],
-                image['created_at'],
-                image['fulltag'],
-                image['image_digest'],
-                image['arch'],
-                image['distro'],
-                image['distro_version'],
-                image['image_size'],
-                image['layer_count'],
-                image['registry'],
-                image['repo'],
-                image['dockerfile']
+                image.get('anchore_imageid', ''),
+                image.get('analyzed_at', '01.01.1970'),
+                image.get('created_at', '01.01.1970'),
+                image.get('fulltag', ''),
+                image.get('image_digest', ''),
+                image.get('arch', ''),
+                image.get('distro', ''),
+                image.get('distro_version'),
+                image.get('image_size', 0),
+                image.get('layer_count', 0),
+                image.get('registry', ''),
+                image.get('repo', ''),
+                image.get('dockerfile', '')
         ))
     
     for image_uid, imageSummary in imageVulnSummary.items():
