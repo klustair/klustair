@@ -204,29 +204,29 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
     imageTrivyVulnList = {}
     imageTrivyVulnSummary = {}
     for imageUid, image in uniqueImagesList.items():
-        log.debug("run Trivy on: {}".format(image))
+        log.debug("run Trivy on: {}".format(image['image']))
         vulnsum = {
-            'CRITICAL': {
+            'Critical': {
                 'severity': 0,
                 'total': 0,
                 'fixed': 0
             },
-            'HIGH': {
+            'High': {
                 'severity': 1,
                 'total': 0,
                 'fixed': 0
             },
-            'MEDIUM': {
+            'Medium': {
                 'severity': 2,
                 'total': 0,
                 'fixed': 0
             },
-            'LOW': {
+            'Low': {
                 'severity': 3,
                 'total': 0,
                 'fixed': 0
             },
-            'UNKNOWN': {
+            'Unknown': {
                 'severity': 4,
                 'total': 0,
                 'fixed': 0
@@ -261,11 +261,11 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
                             #print("   CVSS2 {provider} {base_score}  {vector}".format(provider=provider, base_score=vectors['V2Vector_base_score'], vector=vectors['V2Vector']))
                             
                 if 'Severity' in vulnerability:
-                    vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity']]['severity']
+                    vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity'].capitalize()]['severity']
 
-                vulnsum[vulnerability['Severity']]['total'] += 1
+                vulnsum[vulnerability['Severity'].capitalize()]['total'] += 1
                 if 'FixedVersion' in vulnerability:
-                    vulnsum[vulnerability['Severity']]['fixed'] += 1
+                    vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
             target['summary'] = vulnsum
             imageTrivyVulnList[imageUid].append(target)
             
@@ -380,7 +380,7 @@ def awaitAnalysis():
     #    print("ERROR: Analysis aborted. No data was saved. ")
     #    sys.exit(0)
 
-def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageTrivyVulnSummary, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
+def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('DB_CONNECTION', False)
     pdgbDb = os.getenv('DB_DATABASE', 'postgres')
@@ -546,7 +546,7 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                 image.get('dockerfile', '')
         ))
     
-    for image_uid, imageSummary in imageVulnSummary.items():
+    for image_uid, imageSummary in imageTrivyVulnSummary.items():
         for severity, values in imageSummary.items():
             imagesummaryUid = str(uuid.uuid4())
             cursor.execute('''INSERT INTO k_images_vulnsummary(
@@ -738,7 +738,7 @@ def run():
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #pprint.pprint(containersHasImage)
 
-    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageTrivyVulnSummary, uniqueImagesList, imageVulnSummary, imageVulnList, containersHasImage)
+    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, uniqueImagesList, imageTrivyVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
 
 
