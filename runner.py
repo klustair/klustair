@@ -241,33 +241,35 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
         
         imageTrivyVulnList[imageUid] = []
         for target in imageVuln:
-            for vulnerability in target['Vulnerabilities']:
-                #print("PkgName: {PkgName} {VulnerabilityID}".format(PkgName=vulnerability['PkgName'], VulnerabilityID=vulnerability['VulnerabilityID']))
-                if 'CVSS' in vulnerability:
-                    
-                    for provider, vectors in vulnerability['CVSS'].items():
-                        if 'V3Vector' in vectors:
-                            cvss = CVSS3(vectors['V3Vector'])
-                            vectors['V3Vector_base_score']=str(round(cvss.base_score, 1))
-                            vectors['V3Vector_modified_isc']=str(round(cvss.modified_isc, 1))
-                            vectors['V3Vector_modified_esc']=str(round(cvss.modified_esc, 1))
-                            vectors['V3Vector_metrics']=cvss.metrics
-                            #print("   CVSS3 {provider} {base_score} {modified_isc} {modified_esc} {vector}".format(provider=provider, base_score=vectors['V3Vector_base_score'], modified_isc=vectors['V3Vector_modified_isc'], modified_esc=vectors['V3Vector_modified_esc'], vector=vectors['V3Vector']))
-                            
-                        if 'V2Vector' in vectors:
-                            cvss = CVSS2(vectors['V2Vector'])
-                            vectors['V2Vector_base_score']=str(round(cvss.base_score, 1))
-                            vectors['V2Vector_metrics']=cvss.metrics
-                            #print("   CVSS2 {provider} {base_score}  {vector}".format(provider=provider, base_score=vectors['V2Vector_base_score'], vector=vectors['V2Vector']))
-                            
-                if 'Severity' in vulnerability:
-                    vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity'].capitalize()]['severity']
+            if target['Vulnerabilities'] is not None: 
+                pprint.pprint(target)
+                for vulnerability in target['Vulnerabilities']:
+                    #print("PkgName: {PkgName} {VulnerabilityID}".format(PkgName=vulnerability['PkgName'], VulnerabilityID=vulnerability['VulnerabilityID']))
+                    if 'CVSS' in vulnerability:
+                        
+                        for provider, vectors in vulnerability['CVSS'].items():
+                            if 'V3Vector' in vectors:
+                                cvss = CVSS3(vectors['V3Vector'])
+                                vectors['V3Vector_base_score']=str(round(cvss.base_score, 1))
+                                vectors['V3Vector_modified_isc']=str(round(cvss.modified_isc, 1))
+                                vectors['V3Vector_modified_esc']=str(round(cvss.modified_esc, 1))
+                                vectors['V3Vector_metrics']=cvss.metrics
+                                #print("   CVSS3 {provider} {base_score} {modified_isc} {modified_esc} {vector}".format(provider=provider, base_score=vectors['V3Vector_base_score'], modified_isc=vectors['V3Vector_modified_isc'], modified_esc=vectors['V3Vector_modified_esc'], vector=vectors['V3Vector']))
+                                
+                            if 'V2Vector' in vectors:
+                                cvss = CVSS2(vectors['V2Vector'])
+                                vectors['V2Vector_base_score']=str(round(cvss.base_score, 1))
+                                vectors['V2Vector_metrics']=cvss.metrics
+                                #print("   CVSS2 {provider} {base_score}  {vector}".format(provider=provider, base_score=vectors['V2Vector_base_score'], vector=vectors['V2Vector']))
+                                
+                    if 'Severity' in vulnerability:
+                        vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity'].capitalize()]['severity']
 
-                vulnsum[vulnerability['Severity'].capitalize()]['total'] += 1
-                if 'FixedVersion' in vulnerability:
-                    vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
-            target['summary'] = vulnsum
-            imageTrivyVulnList[imageUid].append(target)
+                    vulnsum[vulnerability['Severity'].capitalize()]['total'] += 1
+                    if 'FixedVersion' in vulnerability:
+                        vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
+                target['summary'] = vulnsum
+                imageTrivyVulnList[imageUid].append(target)
             
         imageTrivyVulnSummary[imageUid] = vulnsum
 
