@@ -647,7 +647,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                         last_modified_date,
                         published_date,
                         links,
-                        cvss
+                        cvss,
+                        cwe_ids
                     ) VALUES (
                         '{uid}', 
                         '{image_uid}', 
@@ -663,7 +664,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                         '{last_modified_date}',
                         '{published_date}',
                         {links},
-                        {cvss}
+                        {cvss},
+                        {cwe_ids}
                     )'''
                     .format(
                         uid=vulnUid,
@@ -680,7 +682,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                         last_modified_date=vuln.get('LastModifiedDate', ''),
                         published_date=vuln.get('PublishedDate', ''),
                         links=Json(json.loads(json.dumps(vuln.get('References', '')))),
-                        cvss=Json(json.loads(json.dumps(vuln.get('CVSS', ''))))
+                        cvss=Json(json.loads(json.dumps(vuln.get('CVSS', '')))),
+                        cwe_ids=Json(json.loads(json.dumps(vuln.get('CweIDs', ''))))
                 ))
 
 
