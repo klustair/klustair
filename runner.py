@@ -256,7 +256,6 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
                                 vectors['provider'] = provider
                                 #print("   CVSS3 {provider} {base_score} {modified_isc} {modified_esc} {vector}".format(provider=provider, base_score=vectors['V3Vector_base_score'], modified_isc=vectors['V3Vector_modified_isc'], modified_esc=vectors['V3Vector_modified_esc'], vector=vectors['V3Vector']))
                                 
-                                target['cvss_base_score'] = vectors['V3Vector_base_score']
                             if 'V2Vector' in vectors:
                                 cvss = CVSS2(vectors['V2Vector'])
                                 vectors['V2Vector_base_score']=str(round(cvss.base_score, 1))
