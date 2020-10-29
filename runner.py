@@ -11,6 +11,9 @@ import time
 import pprint
 import uuid
 import psycopg2
+from psycopg2.extras import Json
+from cvss import CVSS2, CVSS3
+import base64
 
 report = {}
 
@@ -153,27 +156,36 @@ def getPods(nsList):
 
 def getImages(containersList):
     imagesList = []
+    uniqueImagesList = {}
     for container in containersList.values():
         imagesList.append(container['image'])
-    uniqueImagesList = list(set(imagesList))
+
+    for image in list(set(imagesList)):
+        imageUid = str(uuid.uuid4())
+        image_b64 = base64.urlsafe_b64encode(image.encode('utf-8'))
+        uniqueImagesList[imageUid] = {
+            'uid': imageUid,
+            'fulltag': image,
+            'image_b64': image_b64.decode('utf-8')
+        }
 
     return uniqueImagesList
 
 def submitImagesToAnchore(uniqueImagesList):
     print('INFO: Submit images to Anchore')
-    for image in uniqueImagesList:
-        json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-        log.debug("Submitted Image: {}".format(image))
+    for image in uniqueImagesList.values():
+        json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        log.debug("Submitted Image: {}".format(image['fulltag']))
 
 def getImageDetailsList(uniqueImagesList):
     print('INFO: Load imagedetails')
-    imagesList = {}
-    for image in uniqueImagesList:
-        log.debug("Load Image: {}".format(image))
-        imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", image], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
-        imageUid = str(uuid.uuid4())
-        imagesList[image] = {
-            'uid': imageUid,
+    for imageUid, image in uniqueImagesList.items():
+        log.debug("Load Image: {}".format(uniqueImagesList[imageUid]['image']))
+        imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", uniqueImagesList[imageUid]['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
+        
+        uniqueImagesList[imageUid] = {
+            'image_b64': image['image_b64'],
+            'uid': image['uid'],
             'anchore_imageid': imagedetails['image_detail'][0]['imageId'],
             'analyzed_at': imagedetails['analyzed_at'],
             'created_at': imagedetails['created_at'],
@@ -188,7 +200,85 @@ def getImageDetailsList(uniqueImagesList):
             'repo': imagedetails['image_detail'][0]['repo'],
             'dockerfile': imagedetails['image_detail'][0]['dockerfile']
         }
-    return imagesList
+    return uniqueImagesList
+
+def getImageTrivyVulnerabilities(uniqueImagesList):
+    print('INFO: Load trivy Vulnerabilities')
+    imageTrivyVulnList = {}
+    imageTrivyVulnSummary = {}
+    for imageUid, image in uniqueImagesList.items():
+        log.debug("run Trivy on: {}".format(image['fulltag']))
+        vulnsum = {
+            'Critical': {
+                'severity': 0,
+                'total': 0,
+                'fixed': 0
+            },
+            'High': {
+                'severity': 1,
+                'total': 0,
+                'fixed': 0
+            },
+            'Medium': {
+                'severity': 2,
+                'total': 0,
+                'fixed': 0
+            },
+            'Low': {
+                'severity': 3,
+                'total': 0,
+                'fixed': 0
+            },
+            'Unknown': {
+                'severity': 4,
+                'total': 0,
+                'fixed': 0
+            }
+        }
+
+        imageVuln = json.loads(subprocess.run(["trivy", "-q", "i", "-f", "json", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+
+        # skip empty images like busybox
+        if type(imageVuln) is not list:
+            continue
+        
+        imageTrivyVulnList[imageUid] = []
+        for target in imageVuln:
+            if target['Vulnerabilities'] is not None: 
+                for vulnerability in target['Vulnerabilities']:
+                    #print("PkgName: {PkgName} {VulnerabilityID}".format(PkgName=vulnerability['PkgName'], VulnerabilityID=vulnerability['VulnerabilityID']))
+                    if 'CVSS' in vulnerability:
+                        
+                        for provider, vectors in vulnerability['CVSS'].items():
+                            if 'V3Vector' in vectors:
+                                cvss = CVSS3(vectors['V3Vector'])
+                                vectors['V3Vector_base_score']=str(round(cvss.base_score, 1))
+                                vectors['V3Vector_modified_isc']=str(round(cvss.modified_isc, 1))
+                                vectors['V3Vector_modified_esc']=str(round(cvss.modified_esc, 1))
+                                vectors['V3Vector_metrics']=cvss.metrics
+                                vectors['provider'] = provider
+                                #print("   CVSS3 {provider} {base_score} {modified_isc} {modified_esc} {vector}".format(provider=provider, base_score=vectors['V3Vector_base_score'], modified_isc=vectors['V3Vector_modified_isc'], modified_esc=vectors['V3Vector_modified_esc'], vector=vectors['V3Vector']))
+                                
+                            if 'V2Vector' in vectors:
+                                cvss = CVSS2(vectors['V2Vector'])
+                                vectors['V2Vector_base_score']=str(round(cvss.base_score, 1))
+                                vectors['V2Vector_metrics']=cvss.metrics
+                                vectors['provider'] = provider
+                                #print("   CVSS2 {provider} {base_score}  {vector}".format(provider=provider, base_score=vectors['V2Vector_base_score'], vector=vectors['V2Vector']))
+                                
+                    if 'Severity' in vulnerability:
+                        vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity'].capitalize()]['severity']
+
+                    vulnsum[vulnerability['Severity'].capitalize()]['total'] += 1
+                    if 'FixedVersion' in vulnerability:
+                        vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
+                target['summary'] = vulnsum
+                imageTrivyVulnList[imageUid].append(target)
+            
+        imageTrivyVulnSummary[imageUid] = vulnsum
+
+        #pprint.pprint(imageTryviVulnList)
+    return imageTrivyVulnList, imageTrivyVulnSummary
 
 # NOT Working yet, waiting for a good idea
 def checkContainerActuality(containersList, imageDetailsList): 
@@ -206,12 +296,14 @@ def checkContainerActuality(containersList, imageDetailsList):
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
     for container in containersList.values(): 
-        containerImage = {
-            'report_uid': report['uid'],
-            'container_uid': container['uid'],
-            'image_uid': imagesList[container['image']]['uid']
-        }
-        containerHasImage.append(containerImage)
+        for image_uid, image in imagesList.items():
+            if container['image'] == image['fulltag']:
+                containerImage = {
+                    'report_uid': report['uid'],
+                    'container_uid': container['uid'],
+                    'image_uid': image_uid
+                }
+                containerHasImage.append(containerImage)
     
     return containerHasImage
 
@@ -219,8 +311,8 @@ def getImageVulnerabilities(imageDetailsList):
     print('INFO: Load Vulnerabilities')
     imageVulnList = {}
     imageVulnSummary = {}
-    for image, imagedetails in imageDetailsList.items():
-        log.debug("Load Vuln: {}".format(image))
+    for image in imageDetailsList.values():
+        log.debug("Load Vuln: {}".format(image['fulltag']))
         vulnsum = {
             'Critical': {
                 'total': 0,
@@ -248,14 +340,14 @@ def getImageVulnerabilities(imageDetailsList):
             }
         }
 
-        imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image, 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        imageVuln = json.loads(subprocess.run(["anchore-cli", "--json", "image", "vuln", image['fulltag'], 'all'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         
         for vulnerability in imageVuln['vulnerabilities']:
             vulnsum[vulnerability['severity']]['total'] += 1
             if vulnerability['fix'] != 'None':
                 vulnsum[vulnerability['severity']]['fixed'] += 1
 
-        image_uid = imagedetails['uid']
+        image_uid = image['uid']
         imageVulnList[image_uid] = imageVuln['vulnerabilities']
         imageVulnSummary[image_uid] = vulnsum
     
@@ -266,7 +358,7 @@ def createReport():
     reportUid = str(uuid.uuid4())
     report = {
         'uid': reportUid,
-        'title': args.title
+        'title': args.label
     }
 
     return report
@@ -294,7 +386,7 @@ def awaitAnalysis():
     #    print("ERROR: Analysis aborted. No data was saved. ")
     #    sys.exit(0)
 
-def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage):
+def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
     pdgbConnection = os.getenv('DB_CONNECTION', False)
     pdgbDb = os.getenv('DB_DATABASE', 'postgres')
@@ -423,7 +515,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDet
 
     for image in imageDetailsList.values():
         cursor.execute('''INSERT INTO k_images(
-                uid, 
+                uid,
+                image_b64, 
                 report_uid, 
                 anchore_imageid, 
                 analyzed_at, 
@@ -439,27 +532,28 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDet
                 repo,
                 dockerfile
             ) VALUES (
-                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}'
+                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}', '{15}'
             )'''
             .format(
                 image['uid'],
+                image['image_b64'],
                 report['uid'], 
-                image['anchore_imageid'],
-                image['analyzed_at'],
-                image['created_at'],
+                image.get('anchore_imageid', ''),
+                image.get('analyzed_at', '01.01.1970'),
+                image.get('created_at', '01.01.1970'),
                 image['fulltag'],
-                image['image_digest'],
-                image['arch'],
-                image['distro'],
-                image['distro_version'],
-                image['image_size'],
-                image['layer_count'],
-                image['registry'],
-                image['repo'],
-                image['dockerfile']
+                image.get('image_digest', ''),
+                image.get('arch', ''),
+                image.get('distro', ''),
+                image.get('distro_version'),
+                image.get('image_size', 0),
+                image.get('layer_count', 0),
+                image.get('registry', ''),
+                image.get('repo', ''),
+                image.get('dockerfile', '')
         ))
     
-    for image_uid, imageSummary in imageVulnSummary.items():
+    for image_uid, imageSummary in imageTrivyVulnSummary.items():
         for severity, values in imageSummary.items():
             imagesummaryUid = str(uuid.uuid4())
             cursor.execute('''INSERT INTO k_images_vulnsummary(
@@ -535,6 +629,68 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDet
                     vuln['url'],
                     vuln['vuln']
             ))
+    
+
+    for image_uid, vulnList in imageTrivyVulnList.items():
+        for target in vulnList:
+            #pprint.pprint(target)
+            for vuln in target['Vulnerabilities']:
+                vulnUid = str(uuid.uuid4())
+                
+                cursor.execute('''INSERT INTO k_images_trivyvuln(
+                        uid,
+                        image_uid, 
+                        report_uid, 
+                        vulnerability_id,
+                        pkg_name,
+                        title,
+                        descr,
+                        installed_version,
+                        fixed_version,
+                        severity_source,
+                        severity,
+                        last_modified_date,
+                        published_date,
+                        links,
+                        cvss,
+                        cwe_ids
+                    ) VALUES (
+                        '{uid}', 
+                        '{image_uid}', 
+                        '{report_uid}', 
+                        '{vulnerability_id}',
+                        '{pkg_name}',
+                        '{title}',
+                        '{descr}',
+                        '{installed_version}',
+                        '{fixed_version}',
+                        '{severity_source}',
+                        '{severity}',
+                        '{last_modified_date}',
+                        '{published_date}',
+                        {links},
+                        {cvss},
+                        {cwe_ids}
+                    )'''
+                    .format(
+                        uid=vulnUid,
+                        image_uid=image_uid, 
+                        report_uid=report['uid'], 
+                        vulnerability_id=vuln.get('VulnerabilityID', ''),
+                        pkg_name=vuln['PkgName'],
+                        title=vuln.get('Title', '').replace("'", "''"),
+                        descr=vuln.get('Description', '').replace("'", "''"),
+                        installed_version=vuln.get('InstalledVersion', ''),
+                        fixed_version=vuln.get('FixedVersion', ''),
+                        severity_source=vuln.get('SeveritySource', ''),
+                        severity=vuln['SeverityInt'],
+                        last_modified_date=vuln.get('LastModifiedDate', ''),
+                        published_date=vuln.get('PublishedDate', ''),
+                        links=Json(json.loads(json.dumps(vuln.get('References', '')))),
+                        cvss=Json(json.loads(json.dumps(vuln.get('CVSS', '')))),
+                        cwe_ids=Json(json.loads(json.dumps(vuln.get('CweIDs', ''))))
+                ))
+
 
     for item in containersHasImage:
         cursor.execute("INSERT INTO k_container_has_images (report_uid, container_uid, image_uid) VALUES ('{0}', '{1}', '{2}')"
@@ -562,23 +718,37 @@ def run():
     uniqueImagesList = getImages(containersList)
     #pprint.pprint(uniqueImagesList)
 
-    submitImagesToAnchore(uniqueImagesList)
-    
-    awaitAnalysis()
-
-    imageDetailsList = getImageDetailsList(uniqueImagesList)
-
     #checkContainerActuality(containersList, imageDetailsList)
     #sys.exit()
 
-    containersHasImage = linkImagesToContainers(imageDetailsList, containersList)
+    if (args.trivy == True):
+        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList)
+        #pprint.pprint(imageTrivyVulnList)
+        #pprint.pprint(imageTrivyVulnSummary)
+    else:
+        imageTrivyVulnList = {}
+        imageTrivyVulnSummary = {}
+
+    if (args.anchore == True):
+        submitImagesToAnchore(uniqueImagesList)
+    
+        awaitAnalysis()
+
+        imageDetailsList = getImageDetailsList(uniqueImagesList)
+
+        [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
+        #pprint.pprint(imageVulnList)
+        #pprint.pprint(imageVulnSummary)
+    else:
+        imageDetailsList = {}
+        imageVulnList = {}
+        imageVulnSummary = {}
+
+    
+    containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #pprint.pprint(containersHasImage)
 
-    [imageVulnList, imageVulnSummary] = getImageVulnerabilities(imageDetailsList)
-    #pprint.pprint(imageVulnList)
-    #pprint.pprint(imageVulnSummary)
-
-    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageDetailsList, imageVulnSummary, imageVulnList, containersHasImage)
+    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, uniqueImagesList, imageTrivyVulnSummary, imageVulnList, containersHasImage)
     sys.exit(0)
 
 
@@ -589,7 +759,9 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
     parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
-    parser.add_argument("-t", "--title", default='', required=False, help="A optional title for your run" )
+    parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
+    parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
+    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
 
     args = parser.parse_args()
     if args.verbose:
