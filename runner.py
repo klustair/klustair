@@ -13,6 +13,7 @@ import uuid
 import psycopg2
 from psycopg2.extras import Json
 from cvss import CVSS2, CVSS3
+import base64
 
 report = {}
 
@@ -161,9 +162,11 @@ def getImages(containersList):
 
     for image in list(set(imagesList)):
         imageUid = str(uuid.uuid4())
+        image_b64 = base64.urlsafe_b64encode(image.encode('utf-8'))
         uniqueImagesList[imageUid] = {
             'uid': imageUid,
-            'fulltag': image
+            'fulltag': image,
+            'image_b64': image_b64.decode('utf-8')
         }
 
     return uniqueImagesList
@@ -181,7 +184,7 @@ def getImageDetailsList(uniqueImagesList):
         imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", uniqueImagesList[imageUid]['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
         
         uniqueImagesList[imageUid] = {
-            'image': image['fulltag'],
+            'image_b64': image['image_b64'],
             'uid': image['uid'],
             'anchore_imageid': imagedetails['image_detail'][0]['imageId'],
             'analyzed_at': imagedetails['analyzed_at'],
@@ -512,7 +515,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
 
     for image in imageDetailsList.values():
         cursor.execute('''INSERT INTO k_images(
-                uid, 
+                uid,
+                image_b64, 
                 report_uid, 
                 anchore_imageid, 
                 analyzed_at, 
@@ -528,15 +532,16 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                 repo,
                 dockerfile
             ) VALUES (
-                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}'
+                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}', '{15}'
             )'''
             .format(
                 image['uid'],
+                image['image_b64'],
                 report['uid'], 
                 image.get('anchore_imageid', ''),
                 image.get('analyzed_at', '01.01.1970'),
                 image.get('created_at', '01.01.1970'),
-                image.get('fulltag', ''),
+                image['fulltag'],
                 image.get('image_digest', ''),
                 image.get('arch', ''),
                 image.get('distro', ''),
