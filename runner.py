@@ -145,6 +145,9 @@ def getPods(nsList):
                 if containerStatus['name'] in containersList:
                     if 'state' in containerStatus and 'running' in containerStatus['state']:
                         startedAt = containerStatus['state']['running']['startedAt']
+                    else: 
+                        startedAt = ''
+                    
                     containersList[containerStatus['name']].update([
                         ('ready', containerStatus['ready']),
                         ('started', containerStatus['started']),
@@ -465,7 +468,7 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
                     capability=audit.get('Capability', ''),
                     container=audit.get('Container', ''),
                     missing_annotation=audit.get('MissingAnnotation', ''),
-                    resource_namespace=audit['ResourceNamespace'], 
+                    resource_namespace=audit.get('ResourceNamespace', ''),
                     resource_api_version=audit['ResourceApiVersion']))
                     
 
