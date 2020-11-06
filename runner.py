@@ -19,9 +19,12 @@ report = {}
 
 def loadRepoCredentials(path="./repo-credentials.json"):
     repoCredentials = {}
-    with open(path, 'r') as f:
-        repoCredentials = json.load(f)
-    log.debug(repoCredentials)
+    try:
+        with open(path, 'r') as f:
+            repoCredentials = json.load(f)
+        log.debug(repoCredentials)
+    except:
+        log.debug("Credentials not loaded")
     return repoCredentials
 
 def getNamespaces():
@@ -216,7 +219,7 @@ def addCredentials(image, repoCredentials):
 
     for credential, credentialData in repoCredentials.items():
         if credential in image:
-            log.debug('got credentials for image {image} {credential}'.format(image=image, credential=credential )
+            log.debug('got credentials for image {image} {credential}'.format(image=image, credential=credential ))
             if 'username' in credentialData:
                 os.environ['TRIVY_USERNAME'] = credentialData['username']
             if 'password' in credentialData:
