@@ -776,7 +776,7 @@ def run():
     #sys.exit()
 
     if (args.trivy == True):
-        repoCredentials = loadRepoCredentials(args.trivycredentials)
+        repoCredentials = loadRepoCredentials(args.trivycredentialspath)
 
         [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials)
         #pprint.pprint(imageTrivyVulnList)
