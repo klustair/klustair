@@ -132,3 +132,5 @@ dmypy.json
 .vscode
 
 notes.txt
+
+repo-credentials.json

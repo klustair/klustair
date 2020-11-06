@@ -17,6 +17,13 @@ import base64
 
 report = {}
 
+def loadRepoCredentials(path="./repo-credentials.json"):
+    repoCredentials = {}
+    with open(path, 'r') as f:
+        repoCredentials = json.load(f)
+    log.debug(repoCredentials)
+    return repoCredentials
+
 def getNamespaces():
     print('INFO: Load Namespaces')
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
@@ -205,7 +212,38 @@ def getImageDetailsList(uniqueImagesList):
         }
     return uniqueImagesList
 
-def getImageTrivyVulnerabilities(uniqueImagesList):
+def addCredentials(image, repoCredentials):
+
+    for credential, credentialData in repoCredentials.items():
+        if credential in image:
+            log.debug('got credentials for image {image} {credential}'.format(image=image, credential=credential )
+            if 'username' in credentialData:
+                os.environ['TRIVY_USERNAME'] = credentialData['username']
+            if 'password' in credentialData:
+                os.environ['TRIVY_PASSWORD'] = credentialData['password']
+            if 'registryToken' in credentialData:
+                os.environ['TRIVY_REGISTRY_TOKEN'] = credentialData['registryToken']
+            if 'insecure' in credentialData:
+                os.environ['TRIVY_INSECURE'] = credentialData['insecure']
+            if 'nonSsl' in credentialData:
+                os.environ['TRIVY_NON_SSL'] = credentialData['nonSsl']
+    return
+
+def removeCredenials():
+    if 'TRIVY_USERNAME' in os.environ:
+        del os.environ['TRIVY_USERNAME']
+    if 'TRIVY_PASSWORD' in os.environ:
+        del os.environ['TRIVY_PASSWORD']
+    if 'TRIVY_REGISTRY_TOKEN' in os.environ:
+        del os.environ['TRIVY_REGISTRY_TOKEN']
+    if 'TRIVY_INSECURE' in os.environ:
+        del os.environ['TRIVY_INSECURE']
+    if 'TRIVY_NON_SSL' in os.environ:
+        del os.environ['TRIVY_NON_SSL']
+
+    return
+
+def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
     print('INFO: Load trivy Vulnerabilities')
     imageTrivyVulnList = {}
     imageTrivyVulnSummary = {}
@@ -238,8 +276,16 @@ def getImageTrivyVulnerabilities(uniqueImagesList):
                 'fixed': 0
             }
         }
+        
+        addCredentials(image['fulltag'], repoCredentials)
+        #log.debug(subprocess.run(['printenv'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        trivyresult = subprocess.run(["trivy", "-q", "i", "-f", "json", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8')
+        removeCredenials()
 
-        imageVuln = json.loads(subprocess.run(["trivy", "-q", "i", "-f", "json", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        try:
+            imageVuln = json.loads(trivyresult)
+        except json.JSONDecodeError:
+            return imageTrivyVulnList, imageTrivyVulnSummary
 
         # skip empty images like busybox
         if type(imageVuln) is not list:
@@ -705,6 +751,8 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
     return
 
 def run():
+
+
     report = createReport()
     #pprint.pprint(report)
 
@@ -725,7 +773,9 @@ def run():
     #sys.exit()
 
     if (args.trivy == True):
-        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList)
+        repoCredentials = loadRepoCredentials()
+
+        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials)
         #pprint.pprint(imageTrivyVulnList)
         #pprint.pprint(imageTrivyVulnSummary)
     else:
@@ -765,6 +815,7 @@ if __name__ == '__main__':
     parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
     parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
     parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
+    parser.add_argument("-c", "--trivycredentials", required=False, help="Path to repo credentials for trivy" )
 
     args = parser.parse_args()
     if args.verbose:
