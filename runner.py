@@ -17,7 +17,7 @@ import base64
 
 report = {}
 
-def loadRepoCredentials(path="./repo-credentials.json"):
+def loadRepoCredentials(path):
     repoCredentials = {}
     try:
         with open(path, 'r') as f:
@@ -776,7 +776,7 @@ def run():
     #sys.exit()
 
     if (args.trivy == True):
-        repoCredentials = loadRepoCredentials()
+        repoCredentials = loadRepoCredentials(args.trivycredentials)
 
         [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials)
         #pprint.pprint(imageTrivyVulnList)
@@ -812,13 +812,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", action='store_true', required=False, help="increase output verbosity")
-    parser.add_argument("-n", "--namespaces", required=False, help="Coma separated whitelist of Namespaces to check")
-    parser.add_argument("-N", "--namespacesblacklist", required=False, help="Coma separated blacklist of Namespaces to skip")
-    parser.add_argument("-k", "--kubeaudit", default='all', required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
+    parser.add_argument("-n", "--namespaces", default=os.environ.get('KLUSTAIR_NAMESPACES'), required=False, help="Coma separated whitelist of Namespaces to check")
+    parser.add_argument("-N", "--namespacesblacklist", default=os.environ.get('KLUSTAIR_NAMESPACEBLACKLIST'), required=False, help="Coma separated blacklist of Namespaces to skip")
+    parser.add_argument("-k", "--kubeaudit", default=os.environ.get('KLUSTAIR_KUBEAUDIT', 'all'), required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
     parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
     parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
     parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
-    parser.add_argument("-c", "--trivycredentials", required=False, help="Path to repo credentials for trivy" )
+    parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
 
     args = parser.parse_args()
     if args.verbose:
