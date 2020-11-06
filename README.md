@@ -18,8 +18,8 @@ The Klustair scanner scanns your Kubernetes namespaces for the used images and s
 
 ## Usage
 ```
-scanner.py [-h] [-v] [-n NAMESPACES] [-N NAMESPACESBLACKLIST]
-                        [-c CAPABILITIES] [-o {cli,json}]
+usage: runner.py [-h] [-v] [-n NAMESPACES] [-N NAMESPACESBLACKLIST]
+                 [-k KUBEAUDIT] [-l LABEL] [-a] [-t] [-c TRIVYCREDENTIALS]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -31,9 +31,21 @@ optional arguments:
   -k KUBEAUDIT, --kubeaudit KUBEAUDIT
                         Coma separated list of audits to run. default: 'all',
                         disable: 'none'
-  -t TITLE, --title TITLE
+  -l LABEL, --label LABEL
                         A optional title for your run
-````
+  -a, --anchore         Run Anchore vulnerability checks
+  -t, --trivy           Run Trivy vulnerability checks
+  -c TRIVYCREDENTIALSPATH, --trivycredentialspath TRIVYCREDENTIALSPATH
+                        Path to repo credentials for trivy
+```
+
+## ENV vars
+```
+export KLUSTAIR_NAMESPACES=
+export KLUSTAIR_NAMESPACEBLACKLIST=
+export KLUSTAIR_KUBEAUDIT=
+export KLUSTAIR_TRIVYCREDENTIALSPATH=
+```
 
 ## Run in Docker
 ```
