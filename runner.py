@@ -132,7 +132,7 @@ def getPods(nsList):
                 log.debug("Container: {}".format(c['name']))
 
                 #pprint.pprint(container)
-                containersList[c['name']] = c
+                containersList[c['image']] = c
 
             if 'initContainers' in pod['spec']:
                 for initContainer in pod['spec']['initContainers']:
@@ -149,7 +149,7 @@ def getPods(nsList):
                         'init_container': True
                     }
                     log.debug("initContainer: {}".format(c['name']))
-                    containersList[c['name']] = c
+                    containersList[c['image']] = c
 
             for containerStatus in pod['status']['containerStatuses']:
                 if containerStatus['name'] in containersList:
