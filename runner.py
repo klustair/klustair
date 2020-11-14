@@ -288,7 +288,8 @@ def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
         try:
             imageVuln = json.loads(trivyresult)
         except json.JSONDecodeError:
-            return imageTrivyVulnList, imageTrivyVulnSummary
+            print ("ERROR: could not parse {}".format(image['fulltag']))
+            continue
 
         # skip empty images like busybox
         if type(imageVuln) is not list:
