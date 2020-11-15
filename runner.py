@@ -280,6 +280,7 @@ def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
                 'fixed': 0
             }
         }
+        imageTrivyVulnList[imageUid] = []
         
         addCredentials(image['fulltag'], repoCredentials)
         #log.debug(subprocess.run(['printenv'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
@@ -289,13 +290,13 @@ def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
         try:
             imageVuln = json.loads(trivyresult)
         except json.JSONDecodeError:
-            return imageTrivyVulnList, imageTrivyVulnSummary
+            print ("ERROR: could not parse {}".format(image['fulltag']))
+            continue
 
         # skip empty images like busybox
         if type(imageVuln) is not list:
             continue
         
-        imageTrivyVulnList[imageUid] = []
         for target in imageVuln:
             if target['Vulnerabilities'] is not None: 
                 for vulnerability in target['Vulnerabilities']:
