@@ -151,19 +151,20 @@ def getPods(nsList):
                     log.debug("initContainer: {}".format(c['name']))
                     containersList[c['image']] = c
 
-            for containerStatus in pod['status']['containerStatuses']:
-                if containerStatus['name'] in containersList:
-                    if 'state' in containerStatus and 'running' in containerStatus['state']:
-                        startedAt = containerStatus['state']['running']['startedAt']
-                    else: 
-                        startedAt = ''
-                    
-                    containersList[containerStatus['name']].update([
-                        ('ready', containerStatus['ready']),
-                        ('started', containerStatus['started']),
-                        ('restartCount', containerStatus['restartCount']),
-                        ('startedAt', startedAt),
-                    ])
+            if 'containerStatuses' in pod['status']:
+                for containerStatus in pod['status']['containerStatuses']:
+                    if containerStatus['name'] in containersList:
+                        if 'state' in containerStatus and 'running' in containerStatus['state']:
+                            startedAt = containerStatus['state']['running']['startedAt']
+                        else: 
+                            startedAt = ''
+                        
+                        containersList[containerStatus['name']].update([
+                            ('ready', containerStatus['ready']),
+                            ('started', containerStatus['started']),
+                            ('restartCount', containerStatus['restartCount']),
+                            ('startedAt', startedAt),
+                        ])
 
     return podsList, containersList
 
