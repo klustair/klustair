@@ -6,7 +6,7 @@ import re
 import logging as log
 import argparse
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import pprint
 import uuid
@@ -22,7 +22,7 @@ def loadRepoCredentials(path):
     try:
         with open(path, 'r') as f:
             repoCredentials = json.load(f)
-        log.debug(repoCredentials)
+        #log.debug(repoCredentials)
     except:
         log.debug("Credentials not loaded")
     return repoCredentials
@@ -440,8 +440,7 @@ def awaitAnalysis():
     #    print("ERROR: Analysis aborted. No data was saved. ")
     #    sys.exit(0)
 
-def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage):
-    # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
+def dbConnect():
     pdgbConnection = os.getenv('DB_CONNECTION', False)
     pdgbDb = os.getenv('DB_DATABASE', 'postgres')
     pdgbUser = os.getenv('DB_USERNAME', False)
@@ -457,9 +456,11 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
             database=pdgbDb, user=pdgbUser, password=pdgbPass, host=pdgbHost, port= pdgbPort
         )
     
-    if conn == None:
-        print("INFO: No Data saved to DB")
-        return
+    return conn
+
+def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage):
+    # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
+
     
     print("INFO: Save data to DB")
 
@@ -755,6 +756,34 @@ def saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTri
         ))
     return
 
+def cleanupDB(conn, limitDate=False, limitNr=False ):
+    conn.autocommit = True
+    cursor = conn.cursor()
+
+    if limitNr is not False:
+        log.debug('CLEANUP: keep only {limitNr} reports'.format(limitNr=limitNr))
+        cursor.execute('''
+            DELETE FROM k_reports
+            WHERE uid NOT IN (select uid from k_reports ORDER BY checktime DESC LIMIT {limitNr});
+        '''.format(
+            limitNr=limitNr
+        ))
+
+    if limitDate is not False:
+        now = datetime.now()
+        d = timedelta(days = int(limitDate))
+        checktimeLimit = now - d
+
+
+        log.debug('CLEANUP: removing reports older than {checktimeLimit}'.format(checktimeLimit=checktimeLimit))
+
+        cursor.execute('''
+            DELETE FROM k_reports
+            WHERE checktime < '{checktimeLimit}'::date;
+        '''.format(
+            checktimeLimit=checktimeLimit
+        ))
+
 def run():
 
 
@@ -806,8 +835,15 @@ def run():
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #pprint.pprint(containersHasImage)
 
-    saveToDB(report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, uniqueImagesList, imageTrivyVulnSummary, imageVulnList, containersHasImage)
-    sys.exit(0)
+    conn = dbConnect()
+
+    if conn == None:
+        print("INFO: No Data saved to DB")
+        sys.exit(0)
+    
+    saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, uniqueImagesList, imageTrivyVulnSummary, imageVulnList, containersHasImage)
+    
+    cleanupDB(conn,  args.limitDate, args.limitNr)
 
 
 if __name__ == '__main__':
@@ -821,6 +857,8 @@ if __name__ == '__main__':
     parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
     parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
     parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
+    parser.add_argument("-ld", "--limitDate", default=False, required=False, help="Remove reports older than X days" )
+    parser.add_argument("-ln", "--limitNr", default=False, required=False, help="Keep only X reports" )
 
     args = parser.parse_args()
     if args.verbose:
