@@ -1,5 +1,5 @@
 extraReleaseCommand: null
-feature: feature/
+feature: 
 master: master
 tag: v
 test: test

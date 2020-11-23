@@ -12,9 +12,6 @@ ENV DB_PORT=5432
 ENV DB_DATABASE=
 ENV DB_USERNAME=
 ENV DB_PASSWORD=
-ENV TRIVY_AUTH_URL="https://registry.hub.docker.com"
-ENV TRIVY_USERNAME=
-ENV TRIVY_PASSWORD=
 
 #install kubectl
 RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2 rpm; \
