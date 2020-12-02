@@ -1,5 +1,4 @@
-#FROM debian:stable-slim
-FROM python:3.8-slim-buster
+FROM python:3.8-alpine
 
 ARG KUBECTL_VERSION="v1.17.0"
 ENV ANCHORE_CLI_USER="admin"
@@ -14,13 +13,17 @@ ENV DB_USERNAME=
 ENV DB_PASSWORD=
 
 #install kubectl
-RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2 rpm; \
-echo https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
+RUN apk --no-cache add curl 
+RUN apk --no-cache add postgresql-dev gcc python3-dev musl-dev 
+RUN apk --no-cache add rpm
+
+#RUN apt-get update && apt-get install -y apt-transport-https curl gnupg2 rpm; \
+RUN echo https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl; \
 curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl ; \
 chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
 
 #install gcloud
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y
+#RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y
 
 #install kubeaudit
 COPY --from=shopify/kubeaudit /kubeaudit /usr/local/bin/kubeaudit
@@ -30,5 +33,7 @@ COPY --from=aquasec/trivy /usr/local/bin/trivy /usr/local/bin/trivy
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
+
+RUN apk del curl
 
 COPY runner.py runner.py

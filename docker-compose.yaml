@@ -28,4 +28,4 @@ services:
       - TRIVY_NON_SSL=${TRIVY_NON_SSL}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
-      - ./scanner.py:/scanner-dev.py
+      - ./runner.py:/runner-dev.py
