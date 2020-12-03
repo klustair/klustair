@@ -27,12 +27,13 @@ def loadRepoCredentials(path):
         log.debug("Credentials not loaded")
     return repoCredentials
 
-def getNamespaces():
+def getNamespaces(reportsummary):
     print('INFO: Load Namespaces')
     namespaces = json.loads(subprocess.run(["kubectl", "get", "namespaces", "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
     
     nsList=[]
     for namespace in namespaces['items']:
+        reportsummary['namespaces_total'] +=1 
         namespaceUid = str(uuid.uuid4())
         ns = {
             'name': namespace['metadata']['name'],
@@ -46,6 +47,8 @@ def getNamespaces():
             continue
         if namespacesBlacklist and ns['name'] in namespacesBlacklist: 
             continue
+
+        reportsummary['namespaces_checked'] +=1 
         log.debug("Namespace: {}".format(ns['name']))
         nsList.append(ns)
 
@@ -94,7 +97,7 @@ def getKubeaudits(nsList):
     #sys.exit()
     return namespaceAudits
 
-def getPods(nsList):
+def getPods(nsList, reportsummary):
     print('INFO: Load Pod an Container informations')
 
     podsList=[]
@@ -103,6 +106,9 @@ def getPods(nsList):
         pods = json.loads(subprocess.run(["kubectl", "get", "pods", "-n", ns['name'], "-o=json"], stdout=subprocess.PIPE).stdout.decode('utf-8'))
         
         for pod in pods['items']:
+
+            reportsummary['pods'] += 1
+
             podUid = str(uuid.uuid4())
             p = {
                 'podname': pod['metadata']['name'],
@@ -117,6 +123,9 @@ def getPods(nsList):
             #pprint.pprint(pod)
             podsList.append(p)
             for container in pod['spec']['containers']:
+
+                reportsummary['containers'] += 1
+
                 containerUid = str(uuid.uuid4())
                 c = {
                     'name': container['name'],
@@ -247,11 +256,14 @@ def removeCredenials():
 
     return
 
-def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
+def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummary):
     print('INFO: Load trivy Vulnerabilities')
     imageTrivyVulnList = {}
     imageTrivyVulnSummary = {}
     for imageUid, image in uniqueImagesList.items():
+        
+        reportsummary['images'] += 1
+
         log.debug("run Trivy on: {}".format(image['fulltag']))
         vulnsum = {
             'Critical': {
@@ -324,8 +336,12 @@ def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials):
                         vulnerability['SeverityInt'] = vulnsum[vulnerability['Severity'].capitalize()]['severity']
 
                     vulnsum[vulnerability['Severity'].capitalize()]['total'] += 1
+                    reportsummary['vuln_total'] += 1
+                    reportsummary['vuln_'+vulnerability['Severity'].lower()] += 1
+
                     if 'FixedVersion' in vulnerability:
                         vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
+                        reportsummary['vuln_fixed'] += 1
                 target['summary'] = vulnsum
                 imageTrivyVulnList[imageUid].append(target)
             
@@ -417,6 +433,26 @@ def createReport():
 
     return report
 
+def getReportSummary(report):
+    reportsummaryUid = str(uuid.uuid4())
+    reportsummary = {
+        'uid': reportsummaryUid,
+        'report_uid': report['uid'],
+        'namespaces_total': 0,
+        'namespaces_checked': 0,
+        'vuln_total': 0,
+        'vuln_high': 0,
+        'vuln_critical': 0,
+        'vuln_medium': 0,
+        'vuln_low': 0,
+        'vuln_unknown': 0,
+        'vuln_fixed': 0,
+        'pods': 0,
+        'containers': 0,
+        'images': 0
+    }
+    return reportsummary
+
 def awaitAnalysis():
     try:
         allAnalyzed = False
@@ -458,7 +494,7 @@ def dbConnect():
     
     return conn
 
-def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage):
+def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage, reportsummary):
     # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
 
     
@@ -754,6 +790,50 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
                 item['container_uid'], 
                 item['image_uid']
         ))
+
+    cursor.execute('''INSERT INTO k_reports_summaries(
+            uid,
+            report_uid, 
+            namespaces,
+            vuln_total,
+            vuln_critical,
+            vuln_high,
+            vuln_medium,
+            vuln_low,
+            vuln_unknown,
+            vuln_fixed,
+            pods,
+            images
+        ) VALUES (
+            '{uid}', 
+            '{report_uid}', 
+            {namespaces},
+            {vuln_total},
+            {vuln_critical},
+            {vuln_high},
+            {vuln_medium},
+            {vuln_low},
+            {vuln_unknown},
+            {vuln_fixed},
+            {pods},
+            {images}
+        )'''
+        .format(
+            uid=reportsummary['uid'],
+            report_uid=report['uid'], 
+            namespaces=reportsummary.get('namespaces', 0),
+            vuln_total=reportsummary.get('vuln_total', 0),
+            vuln_critical=reportsummary.get('vuln_critical', 0),
+            vuln_medium=reportsummary.get('vuln_medium', 0),
+            vuln_high=reportsummary.get('vuln_high', 0),
+            vuln_low=reportsummary.get('vuln_low', 0),
+            vuln_unknown=reportsummary.get('vuln_unknown', 0),
+            vuln_fixed=reportsummary.get('vuln_fixed', 0),
+            pods=reportsummary.get('pods', 0),
+            images=reportsummary.get('images', 0)
+        ))
+    
+
     return
 
 def cleanupDB(conn, limitDate=False, limitNr=False ):
@@ -790,13 +870,15 @@ def run():
     report = createReport()
     #pprint.pprint(report)
 
-    nsList = getNamespaces()
+    reportsummary = getReportSummary(report)
+
+    nsList = getNamespaces(reportsummary)
     #pprint.pprint(nsList)
 
     namespaceAudits = getKubeaudits(nsList)
     #pprint.pprint(namespaceAudits)
 
-    [podsList, containersList] = getPods(nsList)
+    [podsList, containersList] = getPods(nsList, reportsummary)
     #pprint.pprint(podsList)
     #pprint.pprint(containersList)
 
@@ -809,7 +891,7 @@ def run():
     if (args.trivy == True):
         repoCredentials = loadRepoCredentials(args.trivycredentialspath)
 
-        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials)
+        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummary)
         #pprint.pprint(imageTrivyVulnList)
         #pprint.pprint(imageTrivyVulnSummary)
     else:
@@ -841,7 +923,19 @@ def run():
         print("INFO: No Data saved to DB")
         sys.exit(0)
     
-    saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, uniqueImagesList, imageTrivyVulnSummary, imageVulnList, containersHasImage)
+    saveToDB(
+        conn, 
+        report, 
+        nsList, 
+        namespaceAudits, 
+        podsList, 
+        containersList, 
+        imageTrivyVulnList, 
+        uniqueImagesList, 
+        imageTrivyVulnSummary, 
+        imageVulnList, 
+        containersHasImage,
+        reportsummary)
     
     cleanupDB(conn,  args.limitDate, args.limitNr)
 
