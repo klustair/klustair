@@ -37,6 +37,10 @@ optional arguments:
   -t, --trivy           Run Trivy vulnerability checks
   -c TRIVYCREDENTIALSPATH, --trivycredentialspath TRIVYCREDENTIALSPATH
                         Path to repo credentials for trivy
+  -ld LIMITDATE, --limitDate LIMITDATE
+                        Remove reports older than X days
+  -ln LIMITNR, --limitNr LIMITNR
+                        Keep only X reports
 ```
 
 ## ENV vars
