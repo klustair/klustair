@@ -794,7 +794,8 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
     cursor.execute('''INSERT INTO k_reports_summaries(
             uid,
             report_uid, 
-            namespaces,
+            namespaces_checked,
+            namespaces_total,
             vuln_total,
             vuln_critical,
             vuln_high,
@@ -807,7 +808,8 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
         ) VALUES (
             '{uid}', 
             '{report_uid}', 
-            {namespaces},
+            {namespaces_checked},
+            {namespaces_total},
             {vuln_total},
             {vuln_critical},
             {vuln_high},
@@ -821,7 +823,8 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
         .format(
             uid=reportsummary['uid'],
             report_uid=report['uid'], 
-            namespaces=reportsummary.get('namespaces', 0),
+            namespaces_checked=reportsummary.get('namespaces_checked', 0),
+            namespaces_total=reportsummary.get('namespaces_total', 0),
             vuln_total=reportsummary.get('vuln_total', 0),
             vuln_critical=reportsummary.get('vuln_critical', 0),
             vuln_medium=reportsummary.get('vuln_medium', 0),
