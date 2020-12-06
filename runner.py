@@ -14,6 +14,7 @@ import psycopg2
 from psycopg2.extras import Json
 from cvss import CVSS2, CVSS3
 import base64
+import docker
 
 report = {}
 
@@ -26,6 +27,49 @@ def loadRepoCredentials(path):
     except:
         log.debug("Credentials not loaded")
     return repoCredentials
+
+def getImageDetails(uniqueImagesList):
+    cli = docker.APIClient()
+
+    imageTag = 'klustair/klustair:latest'
+    imageTag = 'quay.io/k8scsi/csi-attacher:v2.0.0'
+    image = cli.pull(imageTag)
+    pprint.pprint(image) 
+
+    inspect_image = cli.inspect_image(imageTag)
+    pprint.pprint(inspect_image)
+
+    inspect_distribution = cli.inspect_distribution(imageTag)
+    pprint.pprint(inspect_distribution)
+
+    history = cli.history(imageTag)
+    pprint.pprint(history)
+
+    image = cli.get_image(imageTag)
+    f = open('/tmp/container.tar', 'wb')
+    for chunk in image:
+        f.write(chunk)
+    f.close()
+
+    #imagelist = cli.images()
+    #pprint.pprint(imagelist)
+
+    #image = cli.get_image('mysql:8')
+    #pprint.pprint(image)
+
+    
+    #inspect_image = cli.inspect_image('mysql:8')
+    #pprint.pprint(inspect_image)
+    
+    #cli = docker.from_env()
+    #imagea = cli.images.pull('mysql:latest')
+    #pprint.pprint(imagea.attrs)
+    
+    #image = cli.images.get("klustair/klustair-frontend:latest")
+    #pprint.pprint(image.attrs)
+    imagedetails = {}
+    
+    return imagedetails
 
 def getNamespaces():
     print('INFO: Load Namespaces')
@@ -785,7 +829,8 @@ def cleanupDB(conn, limitDate=False, limitNr=False ):
         ))
 
 def run():
-
+    getImageDetails('klustair/klustair:v0.2.7')
+    sys.exit()
 
     report = createReport()
     #pprint.pprint(report)
