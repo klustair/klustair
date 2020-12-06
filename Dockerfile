@@ -29,7 +29,7 @@ chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
 COPY --from=shopify/kubeaudit /kubeaudit /usr/local/bin/kubeaudit
 
 #install trivy
-COPY --from=aquasec/trivy /usr/local/bin/trivy /usr/local/bin/trivy
+COPY --from=aquasec/trivy:0.14.0 /usr/local/bin/trivy /usr/local/bin/trivy
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
