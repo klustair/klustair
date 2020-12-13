@@ -647,7 +647,7 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
     for image_uid, imageSummary in imageTrivyVulnSummary.items():
         for severity, values in imageSummary.items():
             imagesummaryUid = str(uuid.uuid4())
-            cursor.execute('''INSERT INTO k_images_vulnsummary(
+            cursor.execute('''INSERT INTO k_vulnsummary(
                     uid,
                     image_uid, 
                     report_uid, 
@@ -674,7 +674,7 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
             except IndexError:
                 nvd_data = {'id': '', 'cvss_v3': {'base_score':0,'exploitability_score':0,'impact_score':0,}}
 
-            cursor.execute('''INSERT INTO k_images_vuln(
+            cursor.execute('''INSERT INTO k_vuln_anchore(
                     uid,
                     image_uid, 
                     report_uid, 
@@ -728,7 +728,7 @@ def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, im
             for vuln in target['Vulnerabilities']:
                 vulnUid = str(uuid.uuid4())
                 
-                cursor.execute('''INSERT INTO k_images_trivyvuln(
+                cursor.execute('''INSERT INTO k_vuln_trivy(
                         uid,
                         image_uid, 
                         report_uid, 
