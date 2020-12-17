@@ -6,12 +6,9 @@ import re
 import logging as log
 import argparse
 import os
-from datetime import datetime, timedelta
 import time
 import pprint
 import uuid
-import psycopg2
-from psycopg2.extras import Json
 from cvss import CVSS2, CVSS3
 import base64
 from database import Database
@@ -487,22 +484,16 @@ def run():
 
 
     report = createReport()
-    #pprint.pprint(report)
 
     reportsummary = getReportSummary(report)
 
     nsList = getNamespaces(reportsummary)
-    #pprint.pprint(nsList)
 
     namespaceAudits = getKubeaudits(nsList)
-    #pprint.pprint(namespaceAudits)
 
     [podsList, containersList] = getPods(nsList, reportsummary)
-    #pprint.pprint(podsList)
-    #pprint.pprint(containersList)
 
     uniqueImagesList = getImages(containersList)
-    #pprint.pprint(uniqueImagesList)
 
     #checkContainerActuality(containersList, imageDetailsList)
     #sys.exit()
@@ -512,8 +503,6 @@ def run():
         repoCredentials = loadRepoCredentials(args.trivycredentialspath)
 
         [imageVulnListTrivy, imageVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummary)
-        #pprint.pprint(imageVulnListTrivy)
-        #pprint.pprint(imageVulnSummary)
     else:
         imageTrivyVulnList = {}
 
@@ -525,16 +514,11 @@ def run():
         uniqueImagesList = getImageDetailsList(uniqueImagesList)
 
         [imageVulnListAnchore, imageVulnSummary] = getAnchoreVulnerabilities(uniqueImagesList)
-        #pprint.pprint(imageVulnListAnchore)
-        #pprint.pprint(imageVulnSummary)
     else:
         imageVulnListAnchore = {}
 
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
-    #pprint.pprint(containersHasImage)
-
-    conn = dbConnect()
 
     db = Database()
     db.dbConnect()
