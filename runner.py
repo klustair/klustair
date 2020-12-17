@@ -6,10 +6,8 @@ import re
 import logging as log
 import argparse
 import os
-import time
 import pprint
 import uuid
-from cvss import CVSS2, CVSS3
 import base64
 from database import Database
 from anchore import Anchore
