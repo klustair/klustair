@@ -11,6 +11,7 @@ services:
     container_name: klustair-runner
     command: ["tail", "-f", "/dev/null"]
     restart: on-failure
+    working_dir: /app
     environment:
       - DB_CONNECTION=${DB_CONNECTION}
       - DB_HOST=${DB_HOST}
