@@ -1,17 +1,18 @@
 import subprocess
 import json
 import sys
+import logging as log
 class Anchore: 
     def __init__(self):
         print("INFO: Start Anchore analysis")
 
-    def submitImagesToAnchore(uniqueImagesList):
+    def submitImagesToAnchore(self, uniqueImagesList):
         print('INFO: Submit images to Anchore')
         for image in uniqueImagesList.values():
             json.loads(subprocess.run(["anchore-cli", "--json", "image", "add", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8'))
             log.debug("Submitted Image: {}".format(image['fulltag']))
 
-    def getImageDetailsList(uniqueImagesList):
+    def getImageDetailsList(self, uniqueImagesList):
         print('INFO: Load imagedetails')
         for imageUid, image in uniqueImagesList.items():
             log.debug("Load Image: {}".format(uniqueImagesList[imageUid]['image']))
@@ -36,7 +37,7 @@ class Anchore:
             }
         return uniqueImagesList
 
-    def getAnchoreVulnerabilities(imageDetailsList):
+    def getAnchoreVulnerabilities(self, imageDetailsList):
         print('INFO: Load Vulnerabilities')
         imageVulnListAnchore = {}
         imageVulnSummaryAnchore = {}
@@ -88,7 +89,7 @@ class Anchore:
         
         return imageVulnListAnchore, imageVulnSummaryAnchore
 
-    def awaitAnalysis():
+    def awaitAnalysis(self, ):
         try:
             allAnalyzed = False
             while allAnalyzed == False:
