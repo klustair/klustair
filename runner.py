@@ -14,6 +14,7 @@ import psycopg2
 from psycopg2.extras import Json
 from cvss import CVSS2, CVSS3
 import base64
+from database import Database
 
 report = {}
 
@@ -287,7 +288,7 @@ def getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummar
                 'fixed': 0
             },
             'Unknown': {
-                'severity': 4,
+                'severity': 5,
                 'total': 0,
                 'fixed': 0
             }
@@ -377,34 +378,40 @@ def linkImagesToContainers(imagesList,containersList):
     
     return containerHasImage
 
-def getImageVulnerabilities(imageDetailsList):
+def getAnchoreVulnerabilities(imageDetailsList):
     print('INFO: Load Vulnerabilities')
-    imageVulnList = {}
-    imageVulnSummary = {}
+    imageVulnListAnchore = {}
+    imageVulnSummaryAnchore = {}
     for image in imageDetailsList.values():
         log.debug("Load Vuln: {}".format(image['fulltag']))
         vulnsum = {
             'Critical': {
+                'severity': 0,
                 'total': 0,
                 'fixed': 0
             },
             'High': {
+                'severity': 1,
                 'total': 0,
                 'fixed': 0
             },
             'Medium': {
+                'severity': 2,
                 'total': 0,
                 'fixed': 0
             },
             'Low': {
+                'severity': 3,
                 'total': 0,
                 'fixed': 0
             },
             'Negligible': {
+                'severity': 4,
                 'total': 0,
                 'fixed': 0
             },
             'Unknown': {
+                'severity': 5,
                 'total': 0,
                 'fixed': 0
             }
@@ -418,10 +425,10 @@ def getImageVulnerabilities(imageDetailsList):
                 vulnsum[vulnerability['severity']]['fixed'] += 1
 
         image_uid = image['uid']
-        imageVulnList[image_uid] = imageVuln['vulnerabilities']
-        imageVulnSummary[image_uid] = vulnsum
+        imageVulnListAnchore[image_uid] = imageVuln['vulnerabilities']
+        imageVulnSummaryAnchore[image_uid] = vulnsum
     
-    return imageVulnList, imageVulnSummary
+    return imageVulnListAnchore, imageVulnSummaryAnchore
 
 def createReport():
     global report
@@ -476,397 +483,6 @@ def awaitAnalysis():
     #    print("ERROR: Analysis aborted. No data was saved. ")
     #    sys.exit(0)
 
-def dbConnect():
-    pdgbConnection = os.getenv('DB_CONNECTION', False)
-    pdgbDb = os.getenv('DB_DATABASE', 'postgres')
-    pdgbUser = os.getenv('DB_USERNAME', False)
-    pdgbPass = os.getenv('DB_PASSWORD', False)
-    pdgbHost = os.getenv('DB_HOST', '127.0.0.1')
-    pdgbPort = os.getenv('DB_PORT', '5432')
-    
-    conn = None
-    if pdgbConnection:
-        conn = psycopg2.connect(pdgbConnection)
-    elif pdgbDb and pdgbUser and pdgbPass and pdgbHost and pdgbPort: 
-        conn = psycopg2.connect(
-            database=pdgbDb, user=pdgbUser, password=pdgbPass, host=pdgbHost, port= pdgbPort
-        )
-    
-    return conn
-
-def saveToDB(conn, report, nsList, namespaceAudits, podsList, containersList, imageTrivyVulnList, imageDetailsList, imageTrivyVulnSummary, imageVulnList, containersHasImage, reportsummary):
-    # DEV: dbname=postgres user=postgres password=mysecretpassword host=127.0.0.1 port=5432
-
-    
-    print("INFO: Save data to DB")
-
-    conn.autocommit = True
-    cursor = conn.cursor()
-
-    cursor.execute("INSERT INTO k_reports(uid, checktime, title) VALUES ('{0}', current_timestamp, '{1}')".format(report['uid'], report['title']))
-
-    for ns in nsList:
-        cursor.execute("INSERT INTO k_namespaces(name, kubernetes_namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}')"
-            .format(ns['name'], ns['kubernetes_namespace_uid'], ns['uid'], report['uid'], ns['creation_timestamp']))
-
-    #pprint.pprint(namespaceAudits)
-    for nsuid, namespaceAudit in namespaceAudits.items():
-        for audit in namespaceAudit['auditItems']: 
-            #pprint.pprint(namespaceAudit)
-            cursor.execute('''INSERT INTO k_audits(
-                    uid, 
-                    namespace_uid, 
-                    report_uid, 
-                    audit_type, 
-                    audit_name, 
-                    msg, 
-                    severity_level, 
-                    audit_time,
-                    resource_name,
-                    capability,
-                    container,
-                    missing_annotation,
-                    resource_namespace,
-                    resource_api_version
-                ) VALUES (
-                    '{uid}', 
-                    '{namespace_uid}', 
-                    '{report_uid}', 
-                    '{audit_type}', 
-                    '{audit_name}', 
-                    '{msg}', 
-                    '{severity_level}', 
-                    '{audit_time}', 
-                    '{resource_name}', 
-                    '{capability}', 
-                    '{container}', 
-                    '{missing_annotation}', 
-                    '{resource_namespace}', 
-                    '{resource_api_version}')'''
-                .format(
-                    uid=audit['uid'],
-                    namespace_uid=nsuid, 
-                    report_uid=report['uid'],
-                    audit_type=audit['audit_type'],
-                    audit_name=audit['AuditResultName'],
-                    msg=audit['msg'].replace('\'', '"'), 
-                    severity_level=audit['level'], 
-                    audit_time=audit['time'], 
-                    resource_name=audit['ResourceName'], 
-                    capability=audit.get('Capability', ''),
-                    container=audit.get('Container', ''),
-                    missing_annotation=audit.get('MissingAnnotation', ''),
-                    resource_namespace=audit.get('ResourceNamespace', ''),
-                    resource_api_version=audit['ResourceApiVersion']))
-                    
-
-    for pod in podsList:
-        cursor.execute("INSERT INTO k_pods(podname, kubernetes_pod_uid, namespace_uid, uid, report_uid, creation_timestamp) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}')"
-            .format(
-                pod['podname'], 
-                pod['kubernetes_pod_uid'], 
-                pod['namespace_uid'], 
-                pod['uid'], 
-                report['uid'], 
-                pod['creation_timestamp']))
-
-    for container in containersList.values():
-        cursor.execute('''INSERT INTO k_containers(
-                name, 
-                report_uid, 
-                namespace_uid, 
-                pod_uid, 
-                uid, 
-                image, 
-                image_pull_policy, 
-                security_context, 
-                init_container,
-                ready,
-                started,
-                restart_count,
-                started_at
-            ) VALUES (
-                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}'
-            )'''
-            .format(
-                container['name'], 
-                report['uid'], 
-                container['namespace_uid'], 
-                container['pod_uid'],
-                container['uid'], 
-                container['image'],
-                container['image_pull_policy'],
-                container['security_context'],
-                container['init_container'],
-                container.get('ready', False),
-                container.get('started', False),
-                container.get('restartCount', 0),
-                container.get('startedAt', ''),
-        ))
-
-    for image in imageDetailsList.values():
-        cursor.execute('''INSERT INTO k_images(
-                uid,
-                image_b64, 
-                report_uid, 
-                anchore_imageid, 
-                analyzed_at, 
-                created_at, 
-                fulltag, 
-                image_digest, 
-                arch, 
-                distro, 
-                distro_version, 
-                image_size, 
-                layer_count, 
-                registry, 
-                repo,
-                dockerfile
-            ) VALUES (
-                '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}', '{13}', '{14}', '{15}'
-            )'''
-            .format(
-                image['uid'],
-                image['image_b64'],
-                report['uid'], 
-                image.get('anchore_imageid', ''),
-                image.get('analyzed_at', '01.01.1970'),
-                image.get('created_at', '01.01.1970'),
-                image['fulltag'],
-                image.get('image_digest', ''),
-                image.get('arch', ''),
-                image.get('distro', ''),
-                image.get('distro_version'),
-                image.get('image_size', 0),
-                image.get('layer_count', 0),
-                image.get('registry', ''),
-                image.get('repo', ''),
-                image.get('dockerfile', '')
-        ))
-    
-    for image_uid, imageSummary in imageTrivyVulnSummary.items():
-        for severity, values in imageSummary.items():
-            imagesummaryUid = str(uuid.uuid4())
-            cursor.execute('''INSERT INTO k_vulnsummary(
-                    uid,
-                    image_uid, 
-                    report_uid, 
-                    severity,
-                    total,
-                    fixed
-                ) VALUES (
-                    '{0}', '{1}', '{2}', '{3}', '{4}', '{5}'
-                )'''
-                .format(
-                    imagesummaryUid,
-                    image_uid,
-                    report['uid'], 
-                    severity,
-                    values['total'],
-                    values['fixed']
-            ))
-
-    for image_uid, vulnList in imageVulnList.items():
-        for vuln in vulnList:
-            vulnUid = str(uuid.uuid4())
-            try:
-                nvd_data = vuln['nvd_data'][0]
-            except IndexError:
-                nvd_data = {'id': '', 'cvss_v3': {'base_score':0,'exploitability_score':0,'impact_score':0,}}
-
-            cursor.execute('''INSERT INTO k_vuln_anchore(
-                    uid,
-                    image_uid, 
-                    report_uid, 
-                    feed,
-                    feed_group,
-                    fix,
-                    nvd_data_id,
-                    nvd_data_base_score,
-                    nvd_data_exploitability_score,
-                    nvd_data_impact_score,
-                    package_fullname,
-                    package_cpe,
-                    package_cpe23,
-                    package_name,
-                    package_path,
-                    package_type,
-                    package_version,
-                    severity,
-                    url,
-                    vuln
-                ) VALUES (
-                    '{0}', '{1}', '{2}', '{3}', '{4}', '{5}','{6}', {7}, {8}, {9}, '{10}', '{11}', '{12}', '{13}', '{14}', '{15}', '{16}', '{17}', '{18}', '{19}'
-                )'''
-                .format(
-                    vulnUid,
-                    image_uid,
-                    report['uid'], 
-                    vuln['feed'],
-                    vuln['feed_group'],
-                    vuln['fix'],
-                    nvd_data['id'],
-                    nvd_data['cvss_v3']['base_score'],
-                    nvd_data['cvss_v3']['exploitability_score'],
-                    nvd_data['cvss_v3']['impact_score'],
-                    vuln['package'],
-                    vuln['package_cpe'],
-                    vuln['package_cpe23'],
-                    vuln['package_name'],
-                    vuln['package_path'],
-                    vuln['package_type'],
-                    vuln['package_version'],
-                    vuln['severity'],
-                    vuln['url'],
-                    vuln['vuln']
-            ))
-    
-
-    for image_uid, vulnList in imageTrivyVulnList.items():
-        for target in vulnList:
-            #pprint.pprint(target)
-            for vuln in target['Vulnerabilities']:
-                vulnUid = str(uuid.uuid4())
-                
-                cursor.execute('''INSERT INTO k_vuln_trivy(
-                        uid,
-                        image_uid, 
-                        report_uid, 
-                        vulnerability_id,
-                        pkg_name,
-                        title,
-                        descr,
-                        installed_version,
-                        fixed_version,
-                        severity_source,
-                        severity,
-                        last_modified_date,
-                        published_date,
-                        links,
-                        cvss,
-                        cwe_ids
-                    ) VALUES (
-                        '{uid}', 
-                        '{image_uid}', 
-                        '{report_uid}', 
-                        '{vulnerability_id}',
-                        '{pkg_name}',
-                        '{title}',
-                        '{descr}',
-                        '{installed_version}',
-                        '{fixed_version}',
-                        '{severity_source}',
-                        '{severity}',
-                        '{last_modified_date}',
-                        '{published_date}',
-                        {links},
-                        {cvss},
-                        {cwe_ids}
-                    )'''
-                    .format(
-                        uid=vulnUid,
-                        image_uid=image_uid, 
-                        report_uid=report['uid'], 
-                        vulnerability_id=vuln.get('VulnerabilityID', ''),
-                        pkg_name=vuln['PkgName'],
-                        title=vuln.get('Title', '').replace("'", "''"),
-                        descr=vuln.get('Description', '').replace("'", "''"),
-                        installed_version=vuln.get('InstalledVersion', ''),
-                        fixed_version=vuln.get('FixedVersion', ''),
-                        severity_source=vuln.get('SeveritySource', ''),
-                        severity=vuln['SeverityInt'],
-                        last_modified_date=vuln.get('LastModifiedDate', ''),
-                        published_date=vuln.get('PublishedDate', ''),
-                        links=Json(json.loads(json.dumps(vuln.get('References', '')))),
-                        cvss=Json(json.loads(json.dumps(vuln.get('CVSS', '')))),
-                        cwe_ids=Json(json.loads(json.dumps(vuln.get('CweIDs', ''))))
-                ))
-
-
-    for item in containersHasImage:
-        cursor.execute("INSERT INTO k_container_has_images (report_uid, container_uid, image_uid) VALUES ('{0}', '{1}', '{2}')"
-            .format(
-                item['report_uid'], 
-                item['container_uid'], 
-                item['image_uid']
-        ))
-
-    cursor.execute('''INSERT INTO k_reports_summaries(
-            uid,
-            report_uid, 
-            namespaces_checked,
-            namespaces_total,
-            vuln_total,
-            vuln_critical,
-            vuln_high,
-            vuln_medium,
-            vuln_low,
-            vuln_unknown,
-            vuln_fixed,
-            pods,
-            images
-        ) VALUES (
-            '{uid}', 
-            '{report_uid}', 
-            {namespaces_checked},
-            {namespaces_total},
-            {vuln_total},
-            {vuln_critical},
-            {vuln_high},
-            {vuln_medium},
-            {vuln_low},
-            {vuln_unknown},
-            {vuln_fixed},
-            {pods},
-            {images}
-        )'''
-        .format(
-            uid=reportsummary['uid'],
-            report_uid=report['uid'], 
-            namespaces_checked=reportsummary.get('namespaces_checked', 0),
-            namespaces_total=reportsummary.get('namespaces_total', 0),
-            vuln_total=reportsummary.get('vuln_total', 0),
-            vuln_critical=reportsummary.get('vuln_critical', 0),
-            vuln_medium=reportsummary.get('vuln_medium', 0),
-            vuln_high=reportsummary.get('vuln_high', 0),
-            vuln_low=reportsummary.get('vuln_low', 0),
-            vuln_unknown=reportsummary.get('vuln_unknown', 0),
-            vuln_fixed=reportsummary.get('vuln_fixed', 0),
-            pods=reportsummary.get('pods', 0),
-            images=reportsummary.get('images', 0)
-        ))
-    
-
-    return
-
-def cleanupDB(conn, limitDate=False, limitNr=False ):
-    conn.autocommit = True
-    cursor = conn.cursor()
-
-    if limitNr is not False:
-        log.debug('CLEANUP: keep only {limitNr} reports'.format(limitNr=limitNr))
-        cursor.execute('''
-            DELETE FROM k_reports
-            WHERE uid NOT IN (select uid from k_reports ORDER BY checktime DESC LIMIT {limitNr});
-        '''.format(
-            limitNr=limitNr
-        ))
-
-    if limitDate is not False:
-        now = datetime.now()
-        d = timedelta(days = int(limitDate))
-        checktimeLimit = now - d
-
-
-        log.debug('CLEANUP: removing reports older than {checktimeLimit}'.format(checktimeLimit=checktimeLimit))
-
-        cursor.execute('''
-            DELETE FROM k_reports
-            WHERE checktime < '{checktimeLimit}'::date;
-        '''.format(
-            checktimeLimit=checktimeLimit
-        ))
-
 def run():
 
 
@@ -891,30 +507,28 @@ def run():
     #checkContainerActuality(containersList, imageDetailsList)
     #sys.exit()
 
+    imageVulnSummary = {}
     if (args.trivy == True):
         repoCredentials = loadRepoCredentials(args.trivycredentialspath)
 
-        [imageTrivyVulnList, imageTrivyVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummary)
-        #pprint.pprint(imageTrivyVulnList)
-        #pprint.pprint(imageTrivyVulnSummary)
+        [imageVulnListTrivy, imageVulnSummary] = getImageTrivyVulnerabilities(uniqueImagesList, repoCredentials, reportsummary)
+        #pprint.pprint(imageVulnListTrivy)
+        #pprint.pprint(imageVulnSummary)
     else:
         imageTrivyVulnList = {}
-        imageTrivyVulnSummary = {}
 
     if (args.anchore == True):
         submitImagesToAnchore(uniqueImagesList)
     
         awaitAnalysis()
 
-        imageDetailsList = getImageDetailsList(uniqueImagesList)
+        uniqueImagesList = getImageDetailsList(uniqueImagesList)
 
-        [imageVulnList, imageVulnSummary] = getImageVulnerabilities(uniqueImagesList)
-        #pprint.pprint(imageVulnList)
+        [imageVulnListAnchore, imageVulnSummary] = getAnchoreVulnerabilities(uniqueImagesList)
+        #pprint.pprint(imageVulnListAnchore)
         #pprint.pprint(imageVulnSummary)
     else:
-        imageDetailsList = {}
-        imageVulnList = {}
-        imageVulnSummary = {}
+        imageVulnListAnchore = {}
 
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
@@ -922,25 +536,36 @@ def run():
 
     conn = dbConnect()
 
-    if conn == None:
+    db = Database()
+    db.dbConnect()
+
+    if db.connected:
+        db.saveReport(report)
+        db.saveNamespaces(report['uid'], nsList)
+        db.saveNamespaceAudits(report['uid'], namespaceAudits)
+        db.savePods(report['uid'], podsList)
+        db.saveContainers(report['uid'], containersList)
+        db.saveImages(report['uid'], uniqueImagesList)
+
+        if (args.trivy == True):
+            db.saveVulnTrivy(report['uid'], imageVulnListTrivy)
+        
+
+        if (args.anchore == True):
+            db.saveVulnAnchore(report['uid'], imageVulnListAnchore)
+
+        db.saveVulnsummary(report['uid'], imageVulnSummary)
+            
+        db.saveContainersHasImage(report['uid'], containersHasImage)
+        db.saveReportsSummaries(report['uid'], reportsummary)
+
+        db.cleanupDB(args.limitDate, args.limitNr)
+        print("INFO: All Data saved to DB")
+    else:
         print("INFO: No Data saved to DB")
-        sys.exit(0)
+        
+    sys.exit(0)
     
-    saveToDB(
-        conn, 
-        report, 
-        nsList, 
-        namespaceAudits, 
-        podsList, 
-        containersList, 
-        imageTrivyVulnList, 
-        uniqueImagesList, 
-        imageTrivyVulnSummary, 
-        imageVulnList, 
-        containersHasImage,
-        reportsummary)
-    
-    cleanupDB(conn,  args.limitDate, args.limitNr)
 
 
 if __name__ == '__main__':
