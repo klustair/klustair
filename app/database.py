@@ -365,7 +365,7 @@ class Database:
                         '{package_version}',
                         '{severity}',
                         '{url}',
-                        '{19}'
+                        '{vuln}'
                     )'''
                     .format(
                         vulnUid=vulnUid,

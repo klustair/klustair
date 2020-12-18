@@ -232,6 +232,7 @@ def getReportSummary(report):
         'vuln_medium': 0,
         'vuln_low': 0,
         'vuln_unknown': 0,
+        'vuln_negligible': 0,
         'vuln_fixed': 0,
         'pods': 0,
         'containers': 0,
@@ -274,7 +275,7 @@ def run():
 
         uniqueImagesList = anchore.getImageDetailsList(uniqueImagesList)
 
-        [imageVulnListAnchore, imageVulnSummary] = anchore.getAnchoreVulnerabilities(uniqueImagesList)
+        [imageVulnListAnchore, imageVulnSummary] = anchore.getAnchoreVulnerabilities(uniqueImagesList, reportsummary)
     else:
         imageVulnListAnchore = {}
 
