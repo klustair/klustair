@@ -2,6 +2,8 @@ import subprocess
 import json
 import sys
 import logging as log
+import time
+import pprint
 class Anchore: 
     def __init__(self):
         print("INFO: Start Anchore analysis")
@@ -15,8 +17,8 @@ class Anchore:
     def getImageDetailsList(self, uniqueImagesList):
         print('INFO: Load imagedetails')
         for imageUid, image in uniqueImagesList.items():
-            log.debug("Load Image: {}".format(uniqueImagesList[imageUid]['image']))
-            imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", uniqueImagesList[imageUid]['image']], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
+            log.debug("Load Image: {}".format(uniqueImagesList[imageUid]['fulltag']))
+            imagedetails = json.loads(subprocess.run(["anchore-cli", "--json", "image", "get", uniqueImagesList[imageUid]['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8'))[0]
             
             uniqueImagesList[imageUid] = {
                 'image_b64': image['image_b64'],
@@ -37,11 +39,14 @@ class Anchore:
             }
         return uniqueImagesList
 
-    def getAnchoreVulnerabilities(self, imageDetailsList):
+    def getAnchoreVulnerabilities(self, imageDetailsList, reportsummary):
         print('INFO: Load Vulnerabilities')
         imageVulnListAnchore = {}
         imageVulnSummaryAnchore = {}
         for image in imageDetailsList.values():
+            
+            reportsummary['images'] += 1
+
             log.debug("Load Vuln: {}".format(image['fulltag']))
             vulnsum = {
                 'Critical': {
@@ -80,8 +85,11 @@ class Anchore:
             
             for vulnerability in imageVuln['vulnerabilities']:
                 vulnsum[vulnerability['severity']]['total'] += 1
+                reportsummary['vuln_total'] += 1
+                reportsummary['vuln_'+vulnerability['severity'].lower()] += 1
                 if vulnerability['fix'] != 'None':
                     vulnsum[vulnerability['severity']]['fixed'] += 1
+                    reportsummary['vuln_fixed'] += 1
 
             image_uid = image['uid']
             imageVulnListAnchore[image_uid] = imageVuln['vulnerabilities']

@@ -24,4 +24,3 @@ services:
       - ANCHORE_URL=${ANCHORE_URL}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
-      - ./runner.py:/runner-dev.py

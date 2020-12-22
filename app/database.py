@@ -365,7 +365,7 @@ class Database:
                         '{package_version}',
                         '{severity}',
                         '{url}',
-                        '{19}'
+                        '{vuln}'
                     )'''
                     .format(
                         vulnUid=vulnUid,
@@ -394,62 +394,86 @@ class Database:
         for image_uid, vulnList in imageVulnList.items():
             for target in vulnList:
                 #pprint.pprint(target)
-                for vuln in target['Vulnerabilities']:
-                    vulnUid = str(uuid.uuid4())
-                    
-                    self.__cursor.execute('''INSERT INTO k_vuln_trivy(
-                            uid,
-                            image_uid, 
-                            report_uid, 
-                            vulnerability_id,
-                            pkg_name,
-                            title,
-                            descr,
-                            installed_version,
-                            fixed_version,
-                            severity_source,
-                            severity,
-                            last_modified_date,
-                            published_date,
-                            links,
-                            cvss,
-                            cwe_ids
-                        ) VALUES (
-                            '{uid}', 
-                            '{image_uid}', 
-                            '{report_uid}', 
-                            '{vulnerability_id}',
-                            '{pkg_name}',
-                            '{title}',
-                            '{descr}',
-                            '{installed_version}',
-                            '{fixed_version}',
-                            '{severity_source}',
-                            '{severity}',
-                            '{last_modified_date}',
-                            '{published_date}',
-                            {links},
-                            {cvss},
-                            {cwe_ids}
-                        )'''
-                        .format(
-                            uid=vulnUid,
-                            image_uid=image_uid, 
-                            report_uid=report_uid, 
-                            vulnerability_id=vuln.get('VulnerabilityID', ''),
-                            pkg_name=vuln['PkgName'],
-                            title=vuln.get('Title', '').replace("'", "''"),
-                            descr=vuln.get('Description', '').replace("'", "''"),
-                            installed_version=vuln.get('InstalledVersion', ''),
-                            fixed_version=vuln.get('FixedVersion', ''),
-                            severity_source=vuln.get('SeveritySource', ''),
-                            severity=vuln['SeverityInt'],
-                            last_modified_date=vuln.get('LastModifiedDate', ''),
-                            published_date=vuln.get('PublishedDate', ''),
-                            links=Json(json.loads(json.dumps(vuln.get('References', '')))),
-                            cvss=Json(json.loads(json.dumps(vuln.get('CVSS', '')))),
-                            cwe_ids=Json(json.loads(json.dumps(vuln.get('CweIDs', ''))))
+                targetUid = str(uuid.uuid4())
+                self.__cursor.execute('''INSERT INTO k_target_trivy(
+                        uid,
+                        report_uid,
+                        image_uid,
+                        target,
+                        target_type
+                    ) VALUES (
+                        '{uid}',
+                        '{report_uid}',
+                        '{image_uid}',
+                        '{target}',
+                        '{target_type}'
+                    )'''.format(
+                        uid=targetUid,
+                        report_uid=report_uid,
+                        image_uid=image_uid,
+                        target=target['Target'],
+                        target_type=target['Type']
                     ))
+                
+                if target['Vulnerabilities'] is not None: 
+                    for vuln in target['Vulnerabilities']:
+                        vulnUid = str(uuid.uuid4())
+                        
+                        self.__cursor.execute('''INSERT INTO k_vuln_trivy(
+                                uid,
+                                image_uid, 
+                                report_uid, 
+                                target_uid,
+                                vulnerability_id,
+                                pkg_name,
+                                title,
+                                descr,
+                                installed_version,
+                                fixed_version,
+                                severity_source,
+                                severity,
+                                last_modified_date,
+                                published_date,
+                                links,
+                                cvss,
+                                cwe_ids
+                            ) VALUES (
+                                '{uid}', 
+                                '{image_uid}', 
+                                '{report_uid}', 
+                                '{target_uid}', 
+                                '{vulnerability_id}',
+                                '{pkg_name}',
+                                '{title}',
+                                '{descr}',
+                                '{installed_version}',
+                                '{fixed_version}',
+                                '{severity_source}',
+                                '{severity}',
+                                '{last_modified_date}',
+                                '{published_date}',
+                                {links},
+                                {cvss},
+                                {cwe_ids}
+                            )'''.format(
+                                uid=vulnUid,
+                                image_uid=image_uid, 
+                                report_uid=report_uid, 
+                                target_uid=targetUid,
+                                vulnerability_id=vuln.get('VulnerabilityID', ''),
+                                pkg_name=vuln['PkgName'],
+                                title=vuln.get('Title', '').replace("'", "''"),
+                                descr=vuln.get('Description', '').replace("'", "''"),
+                                installed_version=vuln.get('InstalledVersion', ''),
+                                fixed_version=vuln.get('FixedVersion', ''),
+                                severity_source=vuln.get('SeveritySource', ''),
+                                severity=vuln['SeverityInt'],
+                                last_modified_date=vuln.get('LastModifiedDate', ''),
+                                published_date=vuln.get('PublishedDate', ''),
+                                links=Json(json.loads(json.dumps(vuln.get('References', '')))),
+                                cvss=Json(json.loads(json.dumps(vuln.get('CVSS', '')))),
+                                cwe_ids=Json(json.loads(json.dumps(vuln.get('CweIDs', ''))))
+                        ))
 
 
     def saveContainersHasImage(self, report_uid, containersHasImage):
