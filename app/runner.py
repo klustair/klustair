@@ -263,8 +263,6 @@ def run():
         trivy.loadRepoCredentials(args.trivycredentialspath)
         
         [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
-    else:
-        imageTrivyVulnList = {}
 
     if (args.anchore == True):
         anchore = Anchore()
@@ -276,8 +274,6 @@ def run():
         uniqueImagesList = anchore.getImageDetailsList(uniqueImagesList)
 
         [imageVulnListAnchore, imageVulnSummary] = anchore.getAnchoreVulnerabilities(uniqueImagesList, reportsummary)
-    else:
-        imageVulnListAnchore = {}
 
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)

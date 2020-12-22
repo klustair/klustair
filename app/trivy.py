@@ -4,6 +4,9 @@ import sys
 from cvss import CVSS2, CVSS3
 import logging as log
 import os
+import pprint
+import uuid
+
 
 class Trivy:
     repoCredentials = {}
@@ -53,7 +56,7 @@ class Trivy:
 
     def getImageTrivyVulnerabilities(self, uniqueImagesList, reportsummary):
         print('INFO: Load trivy Vulnerabilities')
-        imageTrivyVulnList = {}
+        VulnList = {}
         imageTrivyVulnSummary = {}
         for imageUid, image in uniqueImagesList.items():
             
@@ -87,7 +90,7 @@ class Trivy:
                     'fixed': 0
                 }
             }
-            imageTrivyVulnList[imageUid] = []
+            VulnList[imageUid] = []
             
             self.__addCredentials(image['fulltag'], self.repoCredentials)
             #log.debug(subprocess.run(['printenv'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
@@ -138,9 +141,10 @@ class Trivy:
                             vulnsum[vulnerability['Severity'].capitalize()]['fixed'] += 1
                             reportsummary['vuln_fixed'] += 1
                     target['summary'] = vulnsum
-                    imageTrivyVulnList[imageUid].append(target)
+                
+                VulnList[imageUid].append(target)
                 
             imageTrivyVulnSummary[imageUid] = vulnsum
 
             #pprint.pprint(imageTryviVulnList)
-        return imageTrivyVulnList, imageTrivyVulnSummary
+        return VulnList, imageTrivyVulnSummary
