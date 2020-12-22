@@ -36,4 +36,4 @@ RUN pip install -r requirements.txt
 
 RUN apk del curl
 
-COPY runner.py runner.py
+COPY app/ app/

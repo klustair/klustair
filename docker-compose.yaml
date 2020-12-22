@@ -1,15 +1,17 @@
 version: '3.3'
 
 services:
-  klustair:
+  klustair-runner:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         KUBECTL_VERSION: "${KUBECTL_VERSION:-v1.17.0}"
     image: klustair:latest
+    container_name: klustair-runner
     command: ["tail", "-f", "/dev/null"]
     restart: on-failure
+    working_dir: /app
     environment:
       - DB_CONNECTION=${DB_CONNECTION}
       - DB_HOST=${DB_HOST}
@@ -20,12 +22,6 @@ services:
       - ANCHORE_CLI_USER=${ANCHORE_CLI_USER}
       - ANCHORE_CLI_PASS=${ANCHORE_CLI_PASS}
       - ANCHORE_URL=${ANCHORE_URL}
-      - TRIVY_AUTH_URL=${ANCHORE_URL:-https://registry.hub.docker.com}
-      - TRIVY_USERNAME=${TRIVY_USERNAME}
-      - TRIVY_PASSWORD=${TRIVY_PASSWORD}
-      - TRIVY_REGISTRY_TOKEN=${TRIVY_REGISTRY_TOKEN}
-      - TRIVY_INSECURE=${TRIVY_INSECURE}
-      - TRIVY_NON_SSL=${TRIVY_NON_SSL}
     volumes:
       - ${PATH_LOCAL_KUBECONFIG}:/kube.config
       - ./runner.py:/runner-dev.py

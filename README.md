@@ -71,7 +71,7 @@ docker-compose -f docker-compose-anchore.yaml up -d
 ## develop
 ```
 python3 -m venv env
-source develop/bin/activate
+source env/bin/activate
 pip install -r requirements.txt
 
 deactivate
