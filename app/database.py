@@ -23,7 +23,7 @@ class Database:
         conn = None
         if self.__connection:
             conn = psycopg2.connect(self.__connection)
-        elif self.__database and self.__username and self.__password and self.__hostost and self.__port: 
+        elif self.__database and self.__username and self.__password and self.__host and self.__port: 
             conn = psycopg2.connect(
                 database=self.__database, 
                 user=self.__username, 
