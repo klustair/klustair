@@ -11,9 +11,9 @@ volumes:
 services:
   # The primary API endpoint service
   api:
-    image: anchore/anchore-engine:v0.8.1
+    image: anchore/anchore-engine:v0.8.2
     depends_on:
-      - anchoredb
+      - db
       - catalog
     ports:
       - "8228:8228"
@@ -23,15 +23,15 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=api
-      - ANCHORE_DB_HOST=anchoredb
+      - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "apiext"]
 
   # Catalog is the primary persistence and state manager of the system
   catalog:
-    image: anchore/anchore-engine:v0.8.1
+    image: anchore/anchore-engine:v0.8.2
     depends_on:
-      - anchoredb
+      - db
     logging:
       driver: "json-file"
       options:
@@ -40,13 +40,13 @@ services:
       - 8228
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=catalog
-      - ANCHORE_DB_HOST=anchoredb
+      - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "catalog"]
   queue:
-    image: anchore/anchore-engine:v0.8.1
+    image: anchore/anchore-engine:v0.8.2
     depends_on:
-      - anchoredb
+      - db
       - catalog
     expose:
       - 8228
@@ -56,13 +56,13 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=queue
-      - ANCHORE_DB_HOST=anchoredb
+      - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "simplequeue"]
   policy-engine:
-    image: anchore/anchore-engine:v0.8.1
+    image: anchore/anchore-engine:v0.8.2
     depends_on:
-      - anchoredb
+      - db
       - catalog
     expose:
       - 8228
@@ -72,13 +72,13 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=policy-engine
-      - ANCHORE_DB_HOST=anchoredb
+      - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "policy_engine"]
   analyzer:
-    image: anchore/anchore-engine:v0.8.1
+    image: anchore/anchore-engine:v0.8.2
     depends_on:
-      - anchoredb
+      - db
       - catalog
     expose:
       - 8228
@@ -88,27 +88,27 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=analyzer
-      - ANCHORE_DB_HOST=anchoredb
+      - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     volumes:
       - /analysis_scratch
     command: ["anchore-manager", "service", "start", "analyzer"]
-  anchoredb:
+  db:
     image: "postgres:9"
     volumes:
       - anchore-db-volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
-    ports:
-      - "5432:5432"
     expose:
       - 5432
     logging:
       driver: "json-file"
       options:
         max-size: 100m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
 #  # Uncomment this section to add a prometheus instance to gather metrics. This is mostly for quickstart to demonstrate prometheus metrics exported
-#  anchore-prometheus:
+#  prometheus:
 #    image: docker.io/prom/prometheus:latest
 #    depends_on:
 #      - api
@@ -122,11 +122,11 @@ services:
 #      - "9090:9090"
 #
 #  # Uncomment this section to run a swagger UI service, for inspecting and interacting with the anchore engine API via a browser (http://localhost:8080 by default, change if needed in both sections below)
-#  anchore-swagger-ui-nginx:
+#  swagger-ui-nginx:
 #    image: docker.io/nginx:latest
 #    depends_on:
 #      - api
-#      - anchore-swagger-ui
+#      - swagger-ui
 #    ports:
 #      - "8080:8080"
 #    volumes:
@@ -135,7 +135,7 @@ services:
 #      driver: "json-file"
 #      options:
 #        max-size: 100m
-#  anchore-swagger-ui:
+#  swagger-ui:
 #    image: docker.io/swaggerapi/swagger-ui
 #    environment:
 #      - URL=http://localhost:8080/v1/swagger.json
