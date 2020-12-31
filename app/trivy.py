@@ -85,7 +85,7 @@ class Trivy:
                     'fixed': 0
                 },
                 'Unknown': {
-                    'severity': 5,
+                    'severity': 4,
                     'total': 0,
                     'fixed': 0
                 }
