@@ -22,5 +22,5 @@ jobs:
         fi
         for i in $(echo $VERSION | sed "s/,/ /g")
         do
-          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v${VERSION}"}' -X POST ${{ secrets.TriggerURL }}
+          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v${VERSION}"}' -X POST ${{ secrets.TRIGGERURL }}
         done
