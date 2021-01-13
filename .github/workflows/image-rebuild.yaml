@@ -1,3 +1,4 @@
+name: image rebuild trigger
 on: 
   schedule:
     - cron: '16 0 * * 5'
