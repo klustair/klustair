@@ -23,5 +23,6 @@ jobs:
         fi
         for v in $(echo $VERSION | sed "s/,/ /g")
         do
-          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v$v"}' -X POST $TRIGGERURL
+          echo Trigger $v
+          curl -H "Content-Type: application/json" --data "{\"source_type\": \"Tag\", \"source_name\": \"v$v\"}" -X POST $TRIGGERURL
         done
