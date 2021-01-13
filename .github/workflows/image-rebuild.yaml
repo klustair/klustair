@@ -1,0 +1,25 @@
+on: 
+  schedule:
+    - cron: '16 0 * * 5'
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: 'Tag Version to rebuild'
+        required: true
+        default: '0.3.0'
+
+env:
+  VERSION: ${{ github.event.inputs.tag_version }}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        if ["$VERSION" != ""]; then
+            VERSION=0.2.7,0.3.0
+        fi
+        for i in $(echo $VERSION | sed "s/,/ /g")
+        do
+          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v${VERSION}"}' -X POST ${{ secrets.TriggerURL }}
+        done
