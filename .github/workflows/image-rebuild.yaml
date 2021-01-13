@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - run: |
-        if ["$VERSION" != ""]; then
+        if [ -n $VERSION ]; then
             VERSION=0.2.7,0.3.0
         fi
-        for i in $(echo $VERSION | sed "s/,/ /g")
+        for v in $(echo $VERSION | sed "s/,/ /g")
         do
-          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v${VERSION}"}' -X POST ${{ secrets.TRIGGERURL }}
+          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v$v"}' -X POST ${{ secrets.TRIGGERURL }}
         done
