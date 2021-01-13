@@ -1,7 +1,7 @@
 name: image rebuild trigger
 on: 
   schedule:
-    - cron: '16 0 * * 5'
+    - cron: '15 20 * * 0'
   workflow_dispatch:
     inputs:
       tag_version:
