@@ -11,6 +11,7 @@ on:
 
 env:
   VERSION: ${{ github.event.inputs.tag_version }}
+  TRIGGERURL: ${{ secrets.TRIGGERURL }}
 
 jobs:
   trigger:
@@ -22,5 +23,5 @@ jobs:
         fi
         for v in $(echo $VERSION | sed "s/,/ /g")
         do
-          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v$v"}' -X POST ${{ secrets.TRIGGERURL }}
+          curl -H "Content-Type: application/json" --data '{"source_type": "Tag", "source_name": "v$v"}' -X POST $TRIGGERURL
         done
