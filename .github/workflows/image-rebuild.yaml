@@ -1,0 +1,28 @@
+name: image rebuild trigger
+on: 
+  schedule:
+    - cron: '15 20 * * 0'
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: 'Tag Version to rebuild'
+        required: true
+        default: '0.3.0'
+
+env:
+  VERSION: ${{ github.event.inputs.tag_version }}
+  TRIGGERURL: ${{ secrets.TRIGGERURL }}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        if [ -n $VERSION ]; then
+            VERSION=0.2.7,0.3.0
+        fi
+        for v in $(echo $VERSION | sed "s/,/ /g")
+        do
+          echo Trigger $v
+          curl -H "Content-Type: application/json" --data "{\"source_type\": \"Tag\", \"source_name\": \"v$v\"}" -X POST $TRIGGERURL
+        done
