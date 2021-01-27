@@ -7,7 +7,7 @@ on:
       tag_version:
         description: 'Tag Version to rebuild'
         required: true
-        default: '0.3.0'
+        default: '0.3.1'
 
 env:
   VERSION: ${{ github.event.inputs.tag_version }}
@@ -19,7 +19,7 @@ jobs:
     steps:
     - run: |
         if [ -n $VERSION ]; then
-            VERSION=0.2.7,0.3.0
+            VERSION=0.2.7,0.3.0,0.3.1
         fi
         for v in $(echo $VERSION | sed "s/,/ /g")
         do
