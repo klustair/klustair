@@ -3,4 +3,3 @@ urllib3==1.25.9
 anchorecli>=0.7.2
 psycopg2-binary==2.8.5
 cvss==2.1
-pyyaml>=5.4 # not directly required, pinned by Snyk to avoid a vulnerability
