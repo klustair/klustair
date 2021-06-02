@@ -86,7 +86,7 @@ def getKubeaudits(nsList):
     return namespaceAudits
 
 def getPods(nsList, reportsummary):
-    print('INFO: Load Pod an Container informations')
+    print('INFO: Load Pod and Container informations')
 
     podsList=[]
     containersList={}
