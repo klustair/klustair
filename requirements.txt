@@ -1,5 +1,5 @@
-requests==2.23.0
-urllib3==1.25.9
+requests>=2.23.0
+urllib3>=1.25.9
 anchorecli>=0.7.2
 psycopg2-binary==2.8.5
-cvss==2.1
+cvss==2.3
