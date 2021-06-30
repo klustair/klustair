@@ -249,8 +249,6 @@ def getReportSummary(report):
 
 def run():
 
-    api = Api()
-
     report = createReport()
 
     reportsummary = getReportSummary(report)
@@ -287,7 +285,6 @@ def run():
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
 
-    api = Api()
     api.saveReport(report)
     api.saveNamespaces(report['uid'], nsList)
     api.saveNamespaceAudits(report['uid'], namespaceAudits)
@@ -305,7 +302,30 @@ def run():
 
     sys.exit(0)
     
+def __loadConfig():
+    config = api.getRunnerConfig(args.configkey)
+    if config['found']:
+        pprint.pprint(config)
 
+        # Do not override parameters set by cli or env
+        if not args.limitNr and not config['limit_nr'] == None:
+            args.limitNr = config['limit_nr']
+        if not args.limitDate and not config['limit_date'] == None:
+            args.limitDate = config['limit_date']
+        if not args.namespaces and not config['namespaces'] == None:
+            args.namespaces = config['namespaces']
+        if not args.namespacesblacklist and not config['namespacesblacklist'] == None:
+            args.namespacesblacklist = config['namespacesblacklist']
+        if not args.label and not config['runner_label'] == None:
+            args.label = config['runner_label']
+        if not args.trivy and not config['trivy'] == None:
+            args.trivy = config['trivy']
+        if not args.trivycredentialspath and not config['trivycredentialspath'] == None:
+            args.trivycredentialspath = config['trivycredentialspath']
+        if not args.verbose and not config['verbosity'] == None:
+            args.verbose = config['verbosity']
+        if not args.kubeaudit and not config['kubeaudit'] == None:
+            args.kubeaudit = config['kubeaudit']
 
 if __name__ == '__main__':
 
@@ -321,8 +341,18 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--personalaccesstoken", default=os.environ.get('KLUSTAIR_PERSONAL_ACCESS_TOKEN'), required=False, help="Personal Access Token from Klustair Frontend" )
     parser.add_argument("-ld", "--limitDate", default=False, required=False, help="Remove reports older than X days" )
     parser.add_argument("-ln", "--limitNr", default=False, required=False, help="Keep only X reports" )
+    parser.add_argument("-C", "--configkey", default=os.environ.get('KLUSTAIR_CONFIGKEY', False), required=False, help="Load remote configuration from frontend" )
+    parser.add_argument("-H", "--apihost", default=os.environ.get('KLUSTAIR_APIHOST', False), required=False, help="Remote API-host address [example: https://localhost:8443]" )
 
     args = parser.parse_args()
+
+    if args.apihost and args.personalaccesstoken:
+        api = Api(args.apihost ,args.personalaccesstoken)
+
+        if args.configkey:
+            __loadConfig()
+
+
     if args.verbose:
         log.basicConfig(format='%(levelname)s:%(message)s', level=log.DEBUG)
 
