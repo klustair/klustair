@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import subprocess, json, sys
-import requests
 import re
 import logging as log
 import argparse
@@ -9,9 +8,9 @@ import os
 import pprint
 import uuid
 import base64
-from database import Database
 from anchore import Anchore
 from trivy import Trivy
+from api import Api
 
 report = {}
 
@@ -124,7 +123,11 @@ def getPods(nsList, reportsummary):
                     'image': container['image'],
                     'image_pull_policy': container['imagePullPolicy'],
                     'security_context': json.dumps(container.get('securityContext', '')),
-                    'init_container': False
+                    'init_container': "false",
+                    'ready': "true",
+                    'started': "true",
+                    'restartCount': 0,
+                    'startedAt': ""
                 }
                 log.debug("Container: {}".format(c['name']))
 
@@ -143,7 +146,11 @@ def getPods(nsList, reportsummary):
                         'image': initContainer['image'],
                         'image_pull_policy': initContainer['imagePullPolicy'],
                         'security_context': json.dumps(initContainer.get('securityContext', '')),
-                        'init_container': True
+                        'init_container': "true",
+                        'ready': "false",
+                        'started': "false",
+                        'restartCount': 0,
+                        'startedAt': ""
                     }
                     log.debug("initContainer: {}".format(c['name']))
                     containersList[c['image']] = c
@@ -183,17 +190,17 @@ def getImages(containersList):
     return uniqueImagesList
 
 # NOT Working yet, waiting for a good idea
-def checkContainerActuality(containersList, imageDetailsList): 
-    print('INFO: Check container actuality')
-    for container in containersList.values(): 
-        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-        if (image_created_at_date > container_started_at_date):
-            actuality = 'ERROR'
-        else:
-            actuality = 'OK   '
-        log.debug("Image actuality: {actuality} created:{image_created_at} started:{container_started_at} {name} {image}".format(actuality=actuality, name=container['name'], image=container['image'], container_started_at=str(container_started_at_date), image_created_at=str(image_created_at_date)))
-    return
+#def checkContainerActuality(containersList, imageDetailsList): 
+#    print('INFO: Check container actuality')
+#    for container in containersList.values(): 
+#        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+#        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
+#        if (image_created_at_date > container_started_at_date):
+#            actuality = 'ERROR'
+#        else:
+#            actuality = 'OK   '
+#        log.debug("Image actuality: {actuality} created:{image_created_at} started:{container_started_at} {name} {image}".format(actuality=actuality, name=container['name'], image=container['image'], container_started_at=str(container_started_at_date), image_created_at=str(image_created_at_date)))
+#    return
 
 def linkImagesToContainers(imagesList,containersList):
     containerHasImage = []
@@ -242,6 +249,8 @@ def getReportSummary(report):
 
 def run():
 
+    api = Api()
+
     report = createReport()
 
     reportsummary = getReportSummary(report)
@@ -278,34 +287,22 @@ def run():
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
 
-    db = Database()
-    db.dbConnect()
+    api = Api()
+    api.saveReport(report)
+    api.saveNamespaces(report['uid'], nsList)
+    api.saveNamespaceAudits(report['uid'], namespaceAudits)
+    api.savePods(report['uid'], podsList)
+    api.saveContainers(report['uid'], containersList)
+    api.saveImages(report['uid'], uniqueImagesList)
+    if (args.trivy == True):
+        api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
 
-    if db.connected:
-        db.saveReport(report)
-        db.saveNamespaces(report['uid'], nsList)
-        db.saveNamespaceAudits(report['uid'], namespaceAudits)
-        db.savePods(report['uid'], podsList)
-        db.saveContainers(report['uid'], containersList)
-        db.saveImages(report['uid'], uniqueImagesList)
+    api.saveVulnsummary(report['uid'], imageVulnSummary)
+    api.saveContainersHasImage(report['uid'], containersHasImage)
+    api.saveReportsSummaries(report['uid'], reportsummary)
 
-        if (args.trivy == True):
-            db.saveVulnTrivy(report['uid'], imageVulnListTrivy)
-        
+    api.cleanupDB(args.limitDate, args.limitNr)
 
-        if (args.anchore == True):
-            db.saveVulnAnchore(report['uid'], imageVulnListAnchore)
-
-        db.saveVulnsummary(report['uid'], imageVulnSummary)
-            
-        db.saveContainersHasImage(report['uid'], containersHasImage)
-        db.saveReportsSummaries(report['uid'], reportsummary)
-
-        db.cleanupDB(args.limitDate, args.limitNr)
-        print("INFO: All Data saved to DB")
-    else:
-        print("INFO: No Data saved to DB")
-        
     sys.exit(0)
     
 
@@ -321,6 +318,7 @@ if __name__ == '__main__':
     parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
     parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
     parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
+    parser.add_argument("-p", "--personalaccesstoken", default=os.environ.get('KLUSTAIR_PERSONAL_ACCESS_TOKEN'), required=False, help="Personal Access Token from Klustair Frontend" )
     parser.add_argument("-ld", "--limitDate", default=False, required=False, help="Remove reports older than X days" )
     parser.add_argument("-ln", "--limitNr", default=False, required=False, help="Keep only X reports" )
 

@@ -108,8 +108,10 @@ class Trivy:
                 continue
             
             for target in imageVuln:
+                target['uid'] = str(uuid.uuid4())
                 if target['Vulnerabilities'] is not None: 
                     for vulnerability in target['Vulnerabilities']:
+                        vulnerability['uid'] = str(uuid.uuid4())
                         #print("PkgName: {PkgName} {VulnerabilityID}".format(PkgName=vulnerability['PkgName'], VulnerabilityID=vulnerability['VulnerabilityID']))
                         if 'CVSS' in vulnerability:
                             

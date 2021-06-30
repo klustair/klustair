@@ -394,7 +394,7 @@ class Database:
         for image_uid, vulnList in imageVulnList.items():
             for target in vulnList:
                 #pprint.pprint(target)
-                targetUid = str(uuid.uuid4())
+                #targetUid = str(uuid.uuid4())
                 self.__cursor.execute('''INSERT INTO k_target_trivy(
                         uid,
                         report_uid,
@@ -408,7 +408,7 @@ class Database:
                         '{target}',
                         '{target_type}'
                     )'''.format(
-                        uid=targetUid,
+                        uid=target['uid'],
                         report_uid=report_uid,
                         image_uid=image_uid,
                         target=target['Target'],
@@ -417,7 +417,7 @@ class Database:
                 
                 if target['Vulnerabilities'] is not None: 
                     for vuln in target['Vulnerabilities']:
-                        vulnUid = str(uuid.uuid4())
+                        #vulnUid = str(uuid.uuid4())
                         
                         self.__cursor.execute('''INSERT INTO k_vuln_trivy(
                                 uid,
@@ -456,10 +456,10 @@ class Database:
                                 {cvss},
                                 {cwe_ids}
                             )'''.format(
-                                uid=vulnUid,
+                                uid=vuln['uid'],
                                 image_uid=image_uid, 
                                 report_uid=report_uid, 
-                                target_uid=targetUid,
+                                target_uid=target['uid'],
                                 vulnerability_id=vuln.get('VulnerabilityID', ''),
                                 pkg_name=vuln['PkgName'],
                                 title=vuln.get('Title', '').replace("'", "''"),
