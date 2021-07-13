@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import subprocess, json, sys
-import re
 import logging as log
 import argparse
 import os
@@ -339,8 +338,8 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
     parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
     parser.add_argument("-p", "--personalaccesstoken", default=os.environ.get('KLUSTAIR_PERSONAL_ACCESS_TOKEN'), required=False, help="Personal Access Token from Klustair Frontend" )
-    parser.add_argument("-ld", "--limitDate", default=False, required=False, help="Remove reports older than X days" )
-    parser.add_argument("-ln", "--limitNr", default=False, required=False, help="Keep only X reports" )
+    parser.add_argument("-ld", "--limitDate", default=os.environ.get('KLUSTAIR_LIMITDATE', False), required=False, help="Remove reports older than X days" )
+    parser.add_argument("-ln", "--limitNr", default=os.environ.get('KLUSTAIR_LIMITNR', False), required=False, help="Keep only X reports" )
     parser.add_argument("-C", "--configkey", default=os.environ.get('KLUSTAIR_CONFIGKEY', False), required=False, help="Load remote configuration from frontend" )
     parser.add_argument("-H", "--apihost", default=os.environ.get('KLUSTAIR_APIHOST', False), required=False, help="Remote API-host address [example: https://localhost:8443]" )
 
