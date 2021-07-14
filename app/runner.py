@@ -341,12 +341,12 @@ if __name__ == '__main__':
     parser.add_argument("-ln", "--limitNr", default=os.environ.get('KLUSTAIR_LIMITNR', False), required=False, help="Keep only X reports" )
     parser.add_argument("-C", "--configkey", default=os.environ.get('KLUSTAIR_CONFIGKEY', False), required=False, help="Load remote configuration from frontend" )
     parser.add_argument("-H", "--apihost", default=os.environ.get('KLUSTAIR_APIHOST', False), required=False, help="Remote API-host address [example: https://localhost:8443]" )
-    parser.add_argument("-T", "--apitoken", default=os.environ.get('KLUSTAIR_APITOKEN'), required=False, help="Personal Access Token from Klustair Frontend" )
+    parser.add_argument("-T", "--apitoken", default=os.environ.get('KLUSTAIR_APITOKEN'), required=False, help="API Access Token from Klustair Frontend" )
 
     args = parser.parse_args()
 
-    if args.apihost and args.personalaccesstoken:
-        api = Api(args.apihost ,args.personalaccesstoken)
+    if args.apihost and args.apitoken:
+        api = Api(args.apihost ,args.apitoken)
 
         if args.configkey:
             __loadConfig()
