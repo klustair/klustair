@@ -75,8 +75,8 @@ class Api:
             pprint.pprint(r.text)
 
     def cleanupDB(self, limitDate=False, limitNr=False ):
-
-        if limitDate is not False:
+        
+        if limitDate is not False and limitDate is not '':
             now = datetime.now()
             d = timedelta(days = int(limitDate))
             checktimeLimit = now - d
