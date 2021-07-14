@@ -13,18 +13,20 @@ class Trivy:
 
     def __init__(self):
         print("INFO: Start Trivy analysis")
+        self.repoCredentials = {}
 
     def loadRepoCredentials(self, path):
         try:
             with open(path, 'r') as f:
                 self.repoCredentials = json.load(f)
-            #log.debug(repoCredentials)
+            #log.debug(self.repoCredentials)
         except:
             log.debug("Credentials not loaded")
+            log.debug(sys.exc_info()[0])
 
-    def __addCredentials(self, image, repoCredentials):
+    def __addCredentials(self, image):
 
-        for credential, credentialData in repoCredentials.items():
+        for credential, credentialData in self.repoCredentials.items():
             if credential in image:
                 log.debug('got credentials for image {image} {credential}'.format(image=image, credential=credential ))
                 if 'username' in credentialData:
@@ -92,7 +94,7 @@ class Trivy:
             }
             VulnList[imageUid] = []
             
-            self.__addCredentials(image['fulltag'], self.repoCredentials)
+            self.__addCredentials(image['fulltag'])
             #log.debug(subprocess.run(['printenv'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
             trivyresult = subprocess.run(["trivy", "-q", "i", "-f", "json", image['fulltag']], stdout=subprocess.PIPE).stdout.decode('utf-8')
             self.__removeCredenials()
@@ -109,7 +111,7 @@ class Trivy:
             
             for target in imageVuln:
                 target['uid'] = str(uuid.uuid4())
-                if target['Vulnerabilities'] is not None: 
+                if 'Vulnerabilities' in target and target['Vulnerabilities'] is not None: 
                     for vulnerability in target['Vulnerabilities']:
                         vulnerability['uid'] = str(uuid.uuid4())
                         #print("PkgName: {PkgName} {VulnerabilityID}".format(PkgName=vulnerability['PkgName'], VulnerabilityID=vulnerability['VulnerabilityID']))
