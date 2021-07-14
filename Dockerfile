@@ -1,16 +1,10 @@
-FROM python:3.8-alpine
+FROM python:3.9-alpine
 
 ARG KUBECTL_VERSION="v1.17.0"
 ENV ANCHORE_CLI_USER="admin"
 ENV ANCHORE_CLI_PASS="foobar"
 ENV ANCHORE_CLI_URL="http://172.17.0.1:8228"
 ENV KUBECONFIG="/kube.config"
-ENV DB_CONNECTION=
-ENV DB_HOST=
-ENV DB_PORT=5432
-ENV DB_DATABASE=
-ENV DB_USERNAME=
-ENV DB_PASSWORD=
 
 #install kubectl
 RUN apk --no-cache add curl 
