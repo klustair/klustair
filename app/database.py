@@ -415,7 +415,7 @@ class Database:
                         target_type=target['Type']
                     ))
                 
-                if target['Vulnerabilities'] is not None: 
+                if 'Vulnerabilities' in target and target['Vulnerabilities'] is not None: 
                     for vuln in target['Vulnerabilities']:
                         vulnUid = str(uuid.uuid4())
                         
