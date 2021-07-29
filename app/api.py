@@ -76,7 +76,7 @@ class Api:
 
     def cleanupDB(self, limitDate=False, limitNr=False ):
         
-        if limitDate is not False and limitDate is not '':
+        if limitDate is not False and limitDate is not "false" and limitDate is not '':
             now = datetime.now()
             d = timedelta(days = int(limitDate))
             checktimeLimit = now - d
