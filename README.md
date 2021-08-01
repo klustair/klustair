@@ -41,6 +41,10 @@ optional arguments:
                         Remove reports older than X days
   -ln LIMITNR, --limitNr LIMITNR
                         Keep only X reports
+  -C CONFIGKEY, --limitNr CONFIGKEY
+                        Load remote configuration from frontend
+  -H APIHOST, --limitNr APIHOST
+                        Remote API-host address [example: https://localhost:8443]
 ```
 
 ## ENV vars
