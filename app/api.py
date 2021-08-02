@@ -84,7 +84,10 @@ class Api:
             checktimeLimit = False
         
         try:
-            limit = int(limitNr)
+            if (limitNr):
+                limit = int(limitNr)
+            else:
+                limit = False
         except:
             limit = False
 
