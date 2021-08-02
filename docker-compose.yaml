@@ -13,13 +13,12 @@ services:
     restart: on-failure
     working_dir: /app
     environment:
-      - ANCHORE_CLI_USER=${ANCHORE_CLI_USER}
-      - ANCHORE_CLI_PASS=${ANCHORE_CLI_PASS}
-      - ANCHORE_URL=${ANCHORE_URL}
       - KLUSTAIR_APITOKEN=${KLUSTAIR_APITOKEN}
       - KLUSTAIR_CONFIGKEY=${KLUSTAIR_CONFIGKEY}
       - KLUSTAIR_APIHOST=${KLUSTAIR_APIHOST}
       - KLUSTAIR_LIMITDATE=${KLUSTAIR_LIMITDATE}
       - KLUSTAIR_LIMITNR=${KLUSTAIR_LIMITNR}
+      - KUBECONFIG=/etc/klustair/kube.config
     volumes:
-      - ${PATH_LOCAL_KUBECONFIG}:/kube.config
+      - ${PATH_LOCAL_KUBECONFIG}:/etc/klustair/kube.config
+      - ./app:/app
