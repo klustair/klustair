@@ -95,8 +95,9 @@ class Api:
 
         log.debug(f'CLEANUP: keep {limit} reports, Timelimit {checktimeLimit}')
 
-        r = requests.post(url=f'{self.__url}/api/v1/pac/report/cleanup', json=cleanup, headers=self.__headers)
-        if (r.status_code > 299):
-            pprint.pprint(r.status_code)
-            pprint.pprint(r.text)
+        if limit != False or checktimeLimit != False:
+            r = requests.post(url=f'{self.__url}/api/v1/pac/report/cleanup', json=cleanup, headers=self.__headers)
+            if (r.status_code > 299):
+                pprint.pprint(r.status_code)
+                pprint.pprint(r.text)
 
