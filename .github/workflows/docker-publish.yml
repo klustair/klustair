@@ -1,41 +1,92 @@
-name: Build and push Klustair Docker image
+name: Docker
 
 on:
   push:
-    branches: ['release']
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - master
+
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+  # Run tests for any PRs.
+  #pull_request:
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: klustair
 
 jobs:
-  build-and-push-image:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    if: github.event_name == 'push'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-      - name: Log in to the Container registry
+      - name: Build images
+        run: | 
+          docker build . --file Dockerfile --tag ${IMAGE_NAME}
+
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image ghcr.io
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          # [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag ${IMAGE_NAME}-apache $IMAGE_ID:${VERSION}-apache
+          docker tag ${IMAGE_NAME}-nginx $IMAGE_ID:${VERSION}-nginx
+          docker tag ${IMAGE_NAME}-php-fpm $IMAGE_ID:${VERSION}-php-fpm
+          docker push $IMAGE_ID:${VERSION}-apache
+          docker push $IMAGE_ID:${VERSION}-nginx
+          docker push $IMAGE_ID:${VERSION}-php-fpm
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push image hub.docker.com
+        run: |
+          IMAGE_ID=klustair/${IMAGE_NAME}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          # [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag ${IMAGE_NAME}-apache $IMAGE_ID:${VERSION}-apache
+          docker tag ${IMAGE_NAME}-nginx $IMAGE_ID:${VERSION}-nginx
+          docker tag ${IMAGE_NAME}-php-fpm $IMAGE_ID:${VERSION}-php-fpm
+          docker push $IMAGE_ID:${VERSION}-apache
+          docker push $IMAGE_ID:${VERSION}-nginx
+          docker push $IMAGE_ID:${VERSION}-php-fpm
