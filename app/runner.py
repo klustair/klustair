@@ -283,21 +283,24 @@ def run():
 
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
+    
+    if args.apihost and args.apitoken:
+        api.saveReport(report)
+        api.saveNamespaces(report['uid'], nsList)
+        api.saveNamespaceAudits(report['uid'], namespaceAudits)
+        api.savePods(report['uid'], podsList)
+        api.saveContainers(report['uid'], containersList)
+        api.saveImages(report['uid'], uniqueImagesList)
+        if (args.trivy == True):
+            api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
 
-    api.saveReport(report)
-    api.saveNamespaces(report['uid'], nsList)
-    api.saveNamespaceAudits(report['uid'], namespaceAudits)
-    api.savePods(report['uid'], podsList)
-    api.saveContainers(report['uid'], containersList)
-    api.saveImages(report['uid'], uniqueImagesList)
-    if (args.trivy == True):
-        api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
+        api.saveVulnsummary(report['uid'], imageVulnSummary)
+        api.saveContainersHasImage(report['uid'], containersHasImage)
+        api.saveReportsSummaries(report['uid'], reportsummary)
 
-    api.saveVulnsummary(report['uid'], imageVulnSummary)
-    api.saveContainersHasImage(report['uid'], containersHasImage)
-    api.saveReportsSummaries(report['uid'], reportsummary)
-
-    api.cleanupDB(args.limitDate, args.limitNr)
+        api.cleanupDB(args.limitDate, args.limitNr)
+    else:
+        log.info('INFO: NOT saving report to API')
 
     sys.exit(0)
     
