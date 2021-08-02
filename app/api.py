@@ -51,10 +51,13 @@ class Api:
             pprint.pprint(r.text)
 
     def saveVulnTrivy(self, report_uid, imageVulnListTrivy):
-        r = requests.post(url=f'{self.__url}/api/v1/pac/report/{report_uid}/vuln/create', json=imageVulnListTrivy, headers=self.__headers)
-        if (r.status_code > 299):
-            pprint.pprint(r.status_code)
-            pprint.pprint(r.text)
+        for image_uid, image in imageVulnListTrivy.items():
+            for target in image:
+                log.debug(f'Save {target["Target"]}')
+                r = requests.post(url=f'{self.__url}/api/v1/pac/report/{report_uid}/{image_uid}/vuln/target/create', json=target, headers=self.__headers)
+                if (r.status_code > 299):
+                    pprint.pprint(r.status_code)
+                    pprint.pprint(r.text)
 
     def saveVulnsummary(self, report_uid, imageVulnSummary):
         r = requests.post(url=f'{self.__url}/api/v1/pac/report/{report_uid}/vuln/summary/create', json=imageVulnSummary, headers=self.__headers)
