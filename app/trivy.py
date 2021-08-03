@@ -6,7 +6,7 @@ import logging as log
 import os
 import pprint
 import uuid
-
+import re
 
 class Trivy:
     repoCredentials = {}
@@ -111,6 +111,13 @@ class Trivy:
             
             for target in imageVuln:
                 target['uid'] = str(uuid.uuid4())
+                
+                matches = ['debian', 'alpine', 'amazon', 'busybox', 'centos', 'oracle', 'photon', 'redhat', 'rhel', 'suse', 'ubuntu']
+                if any(x in target['Type'] for x in matches):
+                    target['isOS'] = True
+                else:
+                    target['isOS'] = False
+                    
                 if 'Vulnerabilities' in target and target['Vulnerabilities'] is not None: 
                     for vulnerability in target['Vulnerabilities']:
                         vulnerability['uid'] = str(uuid.uuid4())
