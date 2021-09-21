@@ -255,7 +255,6 @@ def run():
     nsList = getNamespaces(reportsummary)
 
     namespaceAudits = getKubeaudits(nsList)
-    pprint.pprint(namespaceAudits)
 
     [podsList, containersList] = getPods(nsList, reportsummary)
 
