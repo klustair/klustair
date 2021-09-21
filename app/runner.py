@@ -47,14 +47,14 @@ def getKubeaudits(nsList):
 
     print('INFO: Run Kubeaudit')
     kubeconfig = os.getenv('KUBECONFIG', "/configs/kube.config")
-    for kubeauditCommand in kubeaudit:
-        for ns in nsList:
+    for ns in nsList:
+        nsUid = ns['uid']
+        namespaceAudits[nsUid] = {
+            'auditItems': []
+        }
+        for kubeauditCommand in kubeaudit:
             log.debug("Kubeaudit: audit {} on {}".format(kubeauditCommand, ns['name']))
             results = subprocess.run(["kubeaudit", kubeauditCommand, "-c", kubeconfig, "-n", ns['name'], "-p=json"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip().split('\n')
-            nsUid = ns['uid']
-            namespaceAudits[nsUid] = {
-                'auditItems': []
-            }
             for result in results:
                 try:
                     audit = json.loads(result)
@@ -255,6 +255,7 @@ def run():
     nsList = getNamespaces(reportsummary)
 
     namespaceAudits = getKubeaudits(nsList)
+    pprint.pprint(namespaceAudits)
 
     [podsList, containersList] = getPods(nsList, reportsummary)
 
