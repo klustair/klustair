@@ -1,0 +1,20 @@
+name: Docker rebuild
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: klustair
+
+jobs:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        versiontag: ["v0.3.3", "v0.4.0", "v0.4.1"]
+    steps:
+      - uses: actions/checkout@v2
+      - run: git checkout ${{ matrix.versiontag }}
