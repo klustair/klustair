@@ -1,7 +1,6 @@
 FROM python:3.9-alpine
 
 ARG KUBECTL_VERSION="v1.17.0"
-ENV ANCHORE_CLI_URL="http://172.17.0.1:8228"
 ENV KUBECONFIG="/kube.config"
 
 #install kubectl
