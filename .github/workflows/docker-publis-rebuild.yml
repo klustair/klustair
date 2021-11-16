@@ -17,4 +17,9 @@ jobs:
         versiontag: ["v0.3.3", "v0.4.0", "v0.4.1"]
     steps:
       - uses: actions/checkout@v2
-      - run: git checkout ${{ matrix.versiontag }}
+      - run: git checkout tags/${{ matrix.versiontag }}
+
+      - name: Build image ${{ matrix.versiontag }}
+        run: | 
+          docker build . --file Dockerfile --tag ${IMAGE_NAME}
+          docker images --digests
