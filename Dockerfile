@@ -1,8 +1,6 @@
 FROM python:3.9-alpine
 
 ARG KUBECTL_VERSION="v1.17.0"
-ENV ANCHORE_CLI_USER="admin"
-ENV ANCHORE_CLI_PASS="foobar"
 ENV ANCHORE_CLI_URL="http://172.17.0.1:8228"
 ENV KUBECONFIG="/kube.config"
 
@@ -19,10 +17,10 @@ chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
 #RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y
 
 #install kubeaudit https://github.com/Shopify/kubeaudit/tags
-COPY --from=shopify/kubeaudit:v0.14.1 /kubeaudit /usr/local/bin/kubeaudit
+COPY --from=shopify/kubeaudit:v0.14.2 /kubeaudit /usr/local/bin/kubeaudit
 
 #install trivy https://github.com/aquasecurity/trivy/tags
-COPY --from=aquasec/trivy:0.18.3 /usr/local/bin/trivy /usr/local/bin/trivy
+COPY --from=aquasec/trivy:0.21.0 /usr/local/bin/trivy /usr/local/bin/trivy
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
