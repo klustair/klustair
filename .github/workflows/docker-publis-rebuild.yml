@@ -17,6 +17,8 @@ jobs:
         versiontag: ["v0.3.3", "v0.4.0", "v0.4.1"]
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - run: git checkout tags/${{ matrix.versiontag }}
 
       - name: Build image ${{ matrix.versiontag }}
