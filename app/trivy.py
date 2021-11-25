@@ -106,10 +106,10 @@ class Trivy:
                 continue
 
             # skip empty images like busybox
-            if type(imageVuln) is not list:
+            if type(imageVuln['Results']) is not list:
                 continue
             
-            for target in imageVuln:
+            for target in imageVuln['Results']:
                 target['uid'] = str(uuid.uuid4())
                 
                 matches = ['debian', 'alpine', 'amazon', 'busybox', 'centos', 'oracle', 'photon', 'redhat', 'rhel', 'suse', 'ubuntu']
