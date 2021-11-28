@@ -105,6 +105,16 @@ class Trivy:
                 print ("ERROR: could not parse {}".format(image['fulltag']))
                 continue
 
+            uniqueImagesList[imageUid]['arch']="test"
+            uniqueImagesList[imageUid]['layer_count']=1
+            uniqueImagesList[imageUid]['image_digest']="test"
+
+            uniqueImagesList[imageUid]['distro']="test"
+            uniqueImagesList[imageUid]['distro_version']="test"
+            #uniqueImagesList[imageUid]['created_at']="test"
+            #uniqueImagesList[imageUid]['created_at']="test"
+            uniqueImagesList[imageUid]['dockerfile']="test"
+
             # skip empty images like busybox
             if type(imageVuln) is not list:
                 continue
