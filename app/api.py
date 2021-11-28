@@ -78,26 +78,21 @@ class Api:
 
     def cleanupDB(self, limitDate=False, limitNr=False ):
 
-        try:
+        if (limitDate != False):
             now = datetime.now()
             d = timedelta(days = int(limitDate))
             checktimeLimit = now - d
-        except:
+        else:
             checktimeLimit = False
-        
-        try:
-            if (limitNr):
-                limit = int(limitNr)
-            else:
-                limit = False
-        except:
-            limit = False
 
-        cleanup = {"limitNr": limit, "limitDate": limitDate}
+        if limitNr != False or checktimeLimit != False:
 
-        log.debug(f'CLEANUP: keep {limit} reports, Timelimit {checktimeLimit}')
+            cleanup = {"limitNr": limitNr, "limitDate": limitDate}
 
-        if limit != False or checktimeLimit != False:
+            log.debug(f'CLEANUP: keep {limitNr} reports, Timelimit {checktimeLimit}')
+
+            pprint.pprint(cleanup)
+
             r = requests.post(url=f'{self.__url}/api/v1/pac/report/cleanup', json=cleanup, headers=self.__headers)
             if (r.status_code > 299):
                 pprint.pprint(r.status_code)
