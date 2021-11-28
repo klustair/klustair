@@ -100,12 +100,12 @@ class Trivy:
             self.__removeCredenials()
 
             try:
-                imageVuln = json.loads(trivyresult)
+                Trivy = json.loads(trivyresult)
             except json.JSONDecodeError:
                 print ("ERROR: could not parse {}".format(image['fulltag']))
                 continue
 
-            uniqueImagesList[imageUid]['arch']="test"
+            uniqueImagesList[imageUid]['arch']=Trivy["Metadata"]["ImageConfig"]["architecture"]
             uniqueImagesList[imageUid]['layer_count']=1
             uniqueImagesList[imageUid]['image_digest']="test"
 
@@ -116,10 +116,10 @@ class Trivy:
             uniqueImagesList[imageUid]['dockerfile']="test"
 
             # skip empty images like busybox
-            if type(imageVuln['Results']) is not list:
+            if type(Trivy['Results']) is not list:
                 continue
             
-            for target in imageVuln['Results']:
+            for target in Trivy['Results']:
                 target['uid'] = str(uuid.uuid4())
                 
                 matches = ['debian', 'alpine', 'amazon', 'busybox', 'centos', 'oracle', 'photon', 'redhat', 'rhel', 'suse', 'ubuntu']
