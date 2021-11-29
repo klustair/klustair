@@ -268,8 +268,7 @@ def run():
         api.savePods(report['uid'], podsList)
         api.saveContainers(report['uid'], containersList)
         api.saveImages(report['uid'], uniqueImagesList)
-        if (args.trivy == True):
-            api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
+        api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
 
         api.saveVulnsummary(report['uid'], imageVulnSummary)
         api.saveContainersHasImage(report['uid'], containersHasImage)
