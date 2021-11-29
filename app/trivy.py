@@ -106,14 +106,14 @@ class Trivy:
                 continue
 
             uniqueImagesList[imageUid]['arch']=Trivy["Metadata"]["ImageConfig"]["architecture"]
-            uniqueImagesList[imageUid]['layer_count']=1
-            uniqueImagesList[imageUid]['image_digest']="test"
+            uniqueImagesList[imageUid]['layer_count']=len(Trivy["Metadata"]["ImageConfig"]["rootfs"]["diff_ids"])
+            uniqueImagesList[imageUid]['image_digest']=Trivy["Metadata"]["RepoDigests"][0]
 
-            uniqueImagesList[imageUid]['distro']="test"
-            uniqueImagesList[imageUid]['distro_version']="test"
+            uniqueImagesList[imageUid]['distro']=Trivy["Metadata"]["OS"]["Family"]
+            uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
+            uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
             #uniqueImagesList[imageUid]['created_at']="test"
-            #uniqueImagesList[imageUid]['created_at']="test"
-            uniqueImagesList[imageUid]['dockerfile']="test"
+            #uniqueImagesList[imageUid]['dockerfile']=Trivy["Metadata"]["ImageConfig"]["history"]
 
             # skip empty images like busybox
             if type(Trivy['Results']) is not list:
