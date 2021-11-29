@@ -114,8 +114,8 @@ class Trivy:
             uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
             uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
             uniqueImagesList[imageUid]['analyzed_at']= datetime.now().strftime("%Y/%m/%dT%H:%M:%S")
-            uniqueImagesList[imageUid]['config']=Trivy["Metadata"]["ImageConfig"]["config"]
-            uniqueImagesList[imageUid]['history']=Trivy["Metadata"]["ImageConfig"]["history"]
+            uniqueImagesList[imageUid]['config']= json.dumps(Trivy["Metadata"]["ImageConfig"]["config"])
+            uniqueImagesList[imageUid]['history']=json.dumps(Trivy["Metadata"]["ImageConfig"]["history"])
 
             # skip empty images like busybox
             if type(Trivy['Results']) is not list:
