@@ -7,6 +7,7 @@ import os
 import pprint
 import uuid
 import re
+from datetime import datetime, timedelta
 
 class Trivy:
     repoCredentials = {}
@@ -112,8 +113,9 @@ class Trivy:
             uniqueImagesList[imageUid]['distro']=Trivy["Metadata"]["OS"]["Family"]
             uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
             uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
-            #uniqueImagesList[imageUid]['created_at']="test"
-            #uniqueImagesList[imageUid]['dockerfile']=Trivy["Metadata"]["ImageConfig"]["history"]
+            uniqueImagesList[imageUid]['analyzed_at']= datetime.now().strftime("%Y/%m/%dT%H:%M:%S")
+            uniqueImagesList[imageUid]['config']=Trivy["Metadata"]["ImageConfig"]["config"]
+            uniqueImagesList[imageUid]['history']=Trivy["Metadata"]["ImageConfig"]["history"]
 
             # skip empty images like busybox
             if type(Trivy['Results']) is not list:

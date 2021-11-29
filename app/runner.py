@@ -155,16 +155,18 @@ def getPods(nsList, reportsummary):
 
             if 'containerStatuses' in pod['status']:
                 for containerStatus in pod['status']['containerStatuses']:
-                    if containerStatus['name'] in containersList:
+                    if containerStatus['image'] in containersList:
                         if 'state' in containerStatus and 'running' in containerStatus['state']:
                             startedAt = containerStatus['state']['running']['startedAt']
                         else: 
                             startedAt = ''
                         
-                        containersList[containerStatus['name']].update([
-                            ('ready', containerStatus['ready']),
-                            ('started', containerStatus['started']),
+
+                        containersList[containerStatus['image']].update([
+                            ('ready', str(containerStatus['ready'])),
+                            ('started', str(containerStatus['started'])),
                             ('restartCount', containerStatus['restartCount']),
+                            ('imageID', containerStatus['imageID']),
                             ('startedAt', startedAt),
                         ])
 
@@ -187,23 +189,10 @@ def getImages(containersList):
 
     return uniqueImagesList
 
-# NOT Working yet, waiting for a good idea
-#def checkContainerActuality(containersList, imageDetailsList): 
-#    print('INFO: Check container actuality')
-#    for container in containersList.values(): 
-#        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-#        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-#        if (image_created_at_date > container_started_at_date):
-#            actuality = 'ERROR'
-#        else:
-#            actuality = 'OK   '
-#        log.debug("Image actuality: {actuality} created:{image_created_at} started:{container_started_at} {name} {image}".format(actuality=actuality, name=container['name'], image=container['image'], container_started_at=str(container_started_at_date), image_created_at=str(image_created_at_date)))
-#    return
-
-def linkImagesToContainers(imagesList,containersList):
+def linkImagesToContainers(uniqueImagesList,containersList):
     containerHasImage = []
-    for container in containersList.values(): 
-        for image_uid, image in imagesList.items():
+    for container_uid, container in containersList.items(): 
+        for image_uid, image in uniqueImagesList.items():
             if container['image'] == image['fulltag']:
                 containerImage = {
                     'report_uid': report['uid'],
@@ -211,6 +200,10 @@ def linkImagesToContainers(imagesList,containersList):
                     'image_uid': image_uid
                 }
                 containerHasImage.append(containerImage)
+                if 'imageID' in container and container['imageID'].find(image['image_digest']) != -1:
+                    containersList[container_uid]['actual'] = "true"
+                else:
+                    containersList[container_uid]['actual'] = "false"
     
     return containerHasImage
 
@@ -259,18 +252,14 @@ def run():
 
     uniqueImagesList = getImages(containersList)
 
-    #checkContainerActuality(containersList, imageDetailsList)
-    #sys.exit()
-
     imageVulnSummary = {}
     trivy = Trivy()
     trivy.loadRepoCredentials(args.trivycredentialspath)
-
-    #uniqueImagesList = anchore.getImageDetailsList(uniqueImagesList)
     
     [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
+    #sys.exit()
     
     if args.apihost and args.apitoken:
         api.saveReport(report)
