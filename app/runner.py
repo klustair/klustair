@@ -9,6 +9,7 @@ import uuid
 import base64
 from trivy import Trivy
 from api import Api
+from datetime import datetime
 
 report = {}
 
@@ -95,6 +96,8 @@ def getPods(nsList, reportsummary):
             reportsummary['pods'] += 1
 
             podUid = str(uuid.uuid4())
+
+            age = datetime.now() - datetime.strptime(pod['metadata']['creationTimestamp'], '%Y-%m-%dT%H:%M:%SZ')
             p = {
                 'podname': pod['metadata']['name'],
                 'report_uid': report['uid'],
@@ -102,6 +105,7 @@ def getPods(nsList, reportsummary):
                 'kubernetes_pod_uid': pod['metadata']['uid'],
                 'uid': podUid,
                 'creation_timestamp': pod['metadata']['creationTimestamp'],
+                'age': age.days,
                 'pod_json': json.dumps(pod)
             }
             log.debug("Pod: {}".format(p['podname']))

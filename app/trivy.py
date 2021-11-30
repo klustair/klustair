@@ -106,6 +106,9 @@ class Trivy:
                 print ("ERROR: could not parse {}".format(image['fulltag']))
                 continue
 
+            age = datetime.now() - datetime.strptime(Trivy["Metadata"]["ImageConfig"]["created"].split('.')[0], "%Y-%m-%dT%H:%M:%S")
+            #age = datetime.now() - datetime.strptime(Trivy["Metadata"]["ImageConfig"]["created"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
             uniqueImagesList[imageUid]['arch']=Trivy["Metadata"]["ImageConfig"]["architecture"]
             uniqueImagesList[imageUid]['layer_count']=len(Trivy["Metadata"]["ImageConfig"]["rootfs"]["diff_ids"])
             uniqueImagesList[imageUid]['image_digest']=Trivy["Metadata"]["RepoDigests"][0]
@@ -114,6 +117,7 @@ class Trivy:
             uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
             uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
             uniqueImagesList[imageUid]['analyzed_at']= datetime.now().strftime("%Y/%m/%dT%H:%M:%S")
+            uniqueImagesList[imageUid]['age'] = age.days
             uniqueImagesList[imageUid]['config']= json.dumps(Trivy["Metadata"]["ImageConfig"]["config"])
             uniqueImagesList[imageUid]['history']=json.dumps(Trivy["Metadata"]["ImageConfig"]["history"])
 
