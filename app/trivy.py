@@ -106,7 +106,11 @@ class Trivy:
                 continue
 
             # skip empty images like busybox
-            if 'Results' not in imageVuln and type(imageVuln['Results']) is not list:
+            if 'Results' not in imageVuln:
+                print ("ERROR: no results in {} (run trivy manually in container)".format(image['fulltag']))
+                continue
+                
+            if type(imageVuln['Results']) is not list:
                 print ("ERROR: no results in {} (check memory limits and run trivy manually in container)".format(image['fulltag']))
                 continue
             
