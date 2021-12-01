@@ -105,8 +105,7 @@ def getPods(nsList, reportsummary):
                 'kubernetes_pod_uid': pod['metadata']['uid'],
                 'uid': podUid,
                 'creation_timestamp': pod['metadata']['creationTimestamp'],
-                'age': age.days,
-                'pod_json': json.dumps(pod)
+                'age': age.days
             }
             log.debug("Pod: {}".format(p['podname']))
             #pprint.pprint(pod)

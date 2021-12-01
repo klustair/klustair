@@ -122,8 +122,12 @@ class Trivy:
             uniqueImagesList[imageUid]['history']=json.dumps(Trivy["Metadata"]["ImageConfig"]["history"])
 
             # skip empty images like busybox
-            if 'Results' in Trivy and type(Trivy['Results']) is not list:
-                print ("ERROR: no results in {} (check memory limits and run triy manually in container)".format(image['fulltag']))
+            if 'Results' not in Trivy:
+                print ("ERROR: no results in {} (run trivy manually in container)".format(image['fulltag']))
+                continue
+                
+            if type(Trivy['Results']) is not list:
+                print ("ERROR: no results in {} (check memory limits and run trivy manually in container)".format(image['fulltag']))
                 continue
             
             for target in Trivy['Results']:
