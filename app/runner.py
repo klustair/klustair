@@ -256,10 +256,11 @@ def run():
     uniqueImagesList = getImages(containersList)
 
     imageVulnSummary = {}
-    trivy = Trivy()
-    trivy.loadRepoCredentials(args.trivycredentialspath)
+    if (args.trivy == True):
+        trivy = Trivy()
+        trivy.loadRepoCredentials(args.trivycredentialspath)
     
-    [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
+        [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
     #sys.exit()
@@ -271,7 +272,9 @@ def run():
         api.savePods(report['uid'], podsList)
         api.saveContainers(report['uid'], containersList)
         api.saveImages(report['uid'], uniqueImagesList)
-        api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
+
+        if (args.trivy == True):
+            api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
 
         api.saveVulnsummary(report['uid'], imageVulnSummary)
         api.saveContainersHasImage(report['uid'], containersHasImage)
@@ -316,7 +319,7 @@ if __name__ == '__main__':
     parser.add_argument("-N", "--namespacesblacklist", default=os.environ.get('KLUSTAIR_NAMESPACEBLACKLIST'), required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-k", "--kubeaudit", default=os.environ.get('KLUSTAIR_KUBEAUDIT', 'all'), required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
     parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
-    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="DEPRECATED" )
+    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
     parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
     parser.add_argument("-ld", "--limitDate", default=os.environ.get('KLUSTAIR_LIMITDATE', False), required=False, help="Remove reports older than X days" )
     parser.add_argument("-ln", "--limitNr", default=os.environ.get('KLUSTAIR_LIMITNR', False), required=False, help="Keep only X reports" )
