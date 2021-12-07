@@ -7,6 +7,7 @@ import os
 import pprint
 import uuid
 import re
+from datetime import datetime, timedelta
 
 class Trivy:
     repoCredentials = {}
@@ -100,21 +101,36 @@ class Trivy:
             self.__removeCredenials()
 
             try:
-                imageVuln = json.loads(trivyresult)
+                Trivy = json.loads(trivyresult)
             except json.JSONDecodeError:
                 print ("ERROR: could not parse {}".format(image['fulltag']))
                 continue
 
+            age = datetime.now() - datetime.strptime(Trivy["Metadata"]["ImageConfig"]["created"].split('.')[0], "%Y-%m-%dT%H:%M:%S")
+            #age = datetime.now() - datetime.strptime(Trivy["Metadata"]["ImageConfig"]["created"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+            uniqueImagesList[imageUid]['arch']=Trivy["Metadata"]["ImageConfig"]["architecture"]
+            uniqueImagesList[imageUid]['layer_count']=len(Trivy["Metadata"]["ImageConfig"]["rootfs"]["diff_ids"])
+            uniqueImagesList[imageUid]['image_digest']=Trivy["Metadata"]["RepoDigests"][0]
+
+            uniqueImagesList[imageUid]['distro']=Trivy["Metadata"]["OS"]["Family"]
+            uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
+            uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
+            uniqueImagesList[imageUid]['analyzed_at']= datetime.now().strftime("%Y/%m/%dT%H:%M:%S")
+            uniqueImagesList[imageUid]['age'] = age.days
+            uniqueImagesList[imageUid]['config']= json.dumps(Trivy["Metadata"]["ImageConfig"]["config"])
+            uniqueImagesList[imageUid]['history']=json.dumps(Trivy["Metadata"]["ImageConfig"]["history"])
+
             # skip empty images like busybox
-            if 'Results' not in imageVuln:
+            if 'Results' not in Trivy:
                 print ("ERROR: no results in {} (run trivy manually in container)".format(image['fulltag']))
                 continue
                 
-            if type(imageVuln['Results']) is not list:
+            if type(Trivy['Results']) is not list:
                 print ("ERROR: no results in {} (check memory limits and run trivy manually in container)".format(image['fulltag']))
                 continue
             
-            for target in imageVuln['Results']:
+            for target in Trivy['Results']:
                 target['uid'] = str(uuid.uuid4())
                 
                 matches = ['debian', 'alpine', 'amazon', 'busybox', 'centos', 'oracle', 'photon', 'redhat', 'rhel', 'suse', 'ubuntu']

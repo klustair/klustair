@@ -7,9 +7,9 @@ import os
 import pprint
 import uuid
 import base64
-from anchore import Anchore
 from trivy import Trivy
 from api import Api
+from datetime import datetime
 
 report = {}
 
@@ -96,13 +96,16 @@ def getPods(nsList, reportsummary):
             reportsummary['pods'] += 1
 
             podUid = str(uuid.uuid4())
+
+            age = datetime.now() - datetime.strptime(pod['metadata']['creationTimestamp'], '%Y-%m-%dT%H:%M:%SZ')
             p = {
                 'podname': pod['metadata']['name'],
                 'report_uid': report['uid'],
                 'namespace_uid': ns['uid'],
                 'kubernetes_pod_uid': pod['metadata']['uid'],
                 'uid': podUid,
-                'creation_timestamp': pod['metadata']['creationTimestamp']
+                'creation_timestamp': pod['metadata']['creationTimestamp'],
+                'age': age.days
             }
             log.debug("Pod: {}".format(p['podname']))
             #pprint.pprint(pod)
@@ -155,16 +158,18 @@ def getPods(nsList, reportsummary):
 
             if 'containerStatuses' in pod['status']:
                 for containerStatus in pod['status']['containerStatuses']:
-                    if containerStatus['name'] in containersList:
+                    if containerStatus['image'] in containersList:
                         if 'state' in containerStatus and 'running' in containerStatus['state']:
                             startedAt = containerStatus['state']['running']['startedAt']
                         else: 
                             startedAt = ''
                         
-                        containersList[containerStatus['name']].update([
-                            ('ready', containerStatus['ready']),
-                            ('started', containerStatus['started']),
+
+                        containersList[containerStatus['image']].update([
+                            ('ready', str(containerStatus['ready'])),
+                            ('started', str(containerStatus['started'])),
                             ('restartCount', containerStatus['restartCount']),
+                            ('imageID', containerStatus['imageID']),
                             ('startedAt', startedAt),
                         ])
 
@@ -187,23 +192,10 @@ def getImages(containersList):
 
     return uniqueImagesList
 
-# NOT Working yet, waiting for a good idea
-#def checkContainerActuality(containersList, imageDetailsList): 
-#    print('INFO: Check container actuality')
-#    for container in containersList.values(): 
-#        image_created_at_date = datetime.strptime(imageDetailsList[container['image']]['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-#        container_started_at_date = datetime.strptime(container['startedAt'], "%Y-%m-%dT%H:%M:%SZ")
-#        if (image_created_at_date > container_started_at_date):
-#            actuality = 'ERROR'
-#        else:
-#            actuality = 'OK   '
-#        log.debug("Image actuality: {actuality} created:{image_created_at} started:{container_started_at} {name} {image}".format(actuality=actuality, name=container['name'], image=container['image'], container_started_at=str(container_started_at_date), image_created_at=str(image_created_at_date)))
-#    return
-
-def linkImagesToContainers(imagesList,containersList):
+def linkImagesToContainers(uniqueImagesList,containersList):
     containerHasImage = []
-    for container in containersList.values(): 
-        for image_uid, image in imagesList.items():
+    for container_uid, container in containersList.items(): 
+        for image_uid, image in uniqueImagesList.items():
             if container['image'] == image['fulltag']:
                 containerImage = {
                     'report_uid': report['uid'],
@@ -211,6 +203,10 @@ def linkImagesToContainers(imagesList,containersList):
                     'image_uid': image_uid
                 }
                 containerHasImage.append(containerImage)
+                if 'imageID' in container and container['imageID'].find(image['image_digest']) != -1:
+                    containersList[container_uid]['actual'] = "true"
+                else:
+                    containersList[container_uid]['actual'] = "false"
     
     return containerHasImage
 
@@ -259,29 +255,14 @@ def run():
 
     uniqueImagesList = getImages(containersList)
 
-    #checkContainerActuality(containersList, imageDetailsList)
-    #sys.exit()
-
     imageVulnSummary = {}
-    if (args.trivy == True):
-        trivy = Trivy()
-        trivy.loadRepoCredentials(args.trivycredentialspath)
-        
-        [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
-
-    if (args.anchore == True):
-        anchore = Anchore()
-        
-        anchore.submitImagesToAnchore(uniqueImagesList)
+    trivy = Trivy()
+    trivy.loadRepoCredentials(args.trivycredentialspath)
     
-        anchore.awaitAnalysis()
-
-        uniqueImagesList = anchore.getImageDetailsList(uniqueImagesList)
-
-        [imageVulnListAnchore, imageVulnSummary] = anchore.getAnchoreVulnerabilities(uniqueImagesList, reportsummary)
-
+    [imageVulnListTrivy, imageVulnSummary] = trivy.getImageTrivyVulnerabilities(uniqueImagesList, reportsummary)
     
     containersHasImage = linkImagesToContainers(uniqueImagesList, containersList)
+    #sys.exit()
     
     if args.apihost and args.apitoken:
         api.saveReport(report)
@@ -290,8 +271,7 @@ def run():
         api.savePods(report['uid'], podsList)
         api.saveContainers(report['uid'], containersList)
         api.saveImages(report['uid'], uniqueImagesList)
-        if (args.trivy == True):
-            api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
+        api.saveVulnTrivy(report['uid'], imageVulnListTrivy)
 
         api.saveVulnsummary(report['uid'], imageVulnSummary)
         api.saveContainersHasImage(report['uid'], containersHasImage)
@@ -336,8 +316,7 @@ if __name__ == '__main__':
     parser.add_argument("-N", "--namespacesblacklist", default=os.environ.get('KLUSTAIR_NAMESPACEBLACKLIST'), required=False, help="Coma separated blacklist of Namespaces to skip")
     parser.add_argument("-k", "--kubeaudit", default=os.environ.get('KLUSTAIR_KUBEAUDIT', 'all'), required=False, help="Coma separated list of audits to run. default: 'all', disable: 'none'" )
     parser.add_argument("-l", "--label", default='', required=False, help="A optional title for your run" )
-    parser.add_argument("-a", "--anchore", action='store_true', required=False, help="Run Anchore vulnerability checks" )
-    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="Run Trivy vulnerability checks" )
+    parser.add_argument("-t", "--trivy", action='store_true', required=False, help="DEPRECATED" )
     parser.add_argument("-c", "--trivycredentialspath", default=os.environ.get('KLUSTAIR_TRIVYCREDENTIALSPATH', './repo-credentials.json'), required=False, help="Path to repo credentials for trivy" )
     parser.add_argument("-ld", "--limitDate", default=os.environ.get('KLUSTAIR_LIMITDATE', False), required=False, help="Remove reports older than X days" )
     parser.add_argument("-ln", "--limitNr", default=os.environ.get('KLUSTAIR_LIMITNR', False), required=False, help="Keep only X reports" )
@@ -353,9 +332,11 @@ if __name__ == '__main__':
         if args.configkey:
             __loadConfig()
 
-
     if args.verbose:
         log.basicConfig(format='%(levelname)s:%(message)s', level=log.DEBUG)
+
+    if args.trivy:
+        log.warning('DEPRECATED: --trivy is deprecated and can be removed, since running trivy is now default')
 
     namespacesWhitelist = []
     if args.namespaces:
