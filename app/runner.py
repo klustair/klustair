@@ -341,9 +341,6 @@ if __name__ == '__main__':
     if args.verbose:
         log.basicConfig(format='%(levelname)s:%(message)s', level=log.DEBUG)
 
-    if args.trivy:
-        log.warning('DEPRECATED: --trivy is deprecated and can be removed, since running trivy is now default')
-
     namespacesWhitelist = []
     if args.namespaces:
         namespacesWhitelist = args.namespaces.split(',')
