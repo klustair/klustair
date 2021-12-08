@@ -187,9 +187,18 @@ def getImages(containersList):
         uniqueImagesList[imageUid] = {
             'uid': imageUid,
             'fulltag': image,
-            'image_b64': image_b64.decode('utf-8')
-        }
+            'image_b64': image_b64.decode('utf-8'),
 
+            ## Add some dummy defaults in case image will not be scanned by trivy
+            'arch': "unknown",
+            'layer_count': 0,
+            'image_digest': "unknown",
+            'distro': "unknown",
+            'distro_version': "unknown",
+            'age': 0,
+            'config': '{}',
+            'history': '[]',
+        }
     return uniqueImagesList
 
 def linkImagesToContainers(uniqueImagesList,containersList):
