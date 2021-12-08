@@ -113,8 +113,9 @@ class Trivy:
             uniqueImagesList[imageUid]['layer_count']=len(Trivy["Metadata"]["ImageConfig"]["rootfs"]["diff_ids"])
             uniqueImagesList[imageUid]['image_digest']=Trivy["Metadata"]["RepoDigests"][0]
 
-            uniqueImagesList[imageUid]['distro']=Trivy["Metadata"]["OS"]["Family"]
-            uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
+            if 'OS' in Trivy["Metadata"]:
+                uniqueImagesList[imageUid]['distro']=Trivy["Metadata"]["OS"]["Family"]
+                uniqueImagesList[imageUid]['distro_version']=Trivy["Metadata"]["OS"]["Name"]
             uniqueImagesList[imageUid]['created_at']=Trivy["Metadata"]["ImageConfig"]["created"]
             uniqueImagesList[imageUid]['analyzed_at']= datetime.now().strftime("%Y/%m/%dT%H:%M:%S")
             uniqueImagesList[imageUid]['age'] = age.days
