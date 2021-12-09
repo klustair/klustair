@@ -133,7 +133,7 @@ def getPods(nsList, reportsummary):
                 log.debug("Container: {}".format(c['name']))
 
                 #pprint.pprint(container)
-                containersList[c['image']] = c
+                containersList[c['name']] = c
 
             if 'initContainers' in pod['spec']:
                 for initContainer in pod['spec']['initContainers']:
@@ -154,18 +154,18 @@ def getPods(nsList, reportsummary):
                         'startedAt': ""
                     }
                     log.debug("initContainer: {}".format(c['name']))
-                    containersList[c['image']] = c
+                    containersList[c['name']] = c
 
             if 'containerStatuses' in pod['status']:
                 for containerStatus in pod['status']['containerStatuses']:
-                    if containerStatus['image'] in containersList:
+                    if containerStatus['name'] in containersList:
                         if 'state' in containerStatus and 'running' in containerStatus['state']:
                             startedAt = containerStatus['state']['running']['startedAt']
                         else: 
                             startedAt = ''
                         
 
-                        containersList[containerStatus['image']].update([
+                        containersList[containerStatus['name']].update([
                             ('ready', str(containerStatus['ready'])),
                             ('started', str(containerStatus['started'])),
                             ('restartCount', containerStatus['restartCount']),
@@ -214,11 +214,11 @@ def linkImagesToContainers(uniqueImagesList,containersList):
                 containerHasImage.append(containerImage)
                 if 'imageID' in container and 'image_digest' in image: 
                     if container['imageID'].find(image['image_digest']) != -1:
-                        containersList[container_uid]['actual'] = "true"
+                        containersList[container['name']]['actual'] = "true"
                     else:
-                        containersList[container_uid]['actual'] = "false"
+                        containersList[container['name']]['actual'] = "false"
                 else:
-                    containersList[container_uid]['actual'] = "true"
+                    containersList[container['name']]['actual'] = "true"
     
     return containerHasImage
 
