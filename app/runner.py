@@ -128,7 +128,9 @@ def getPods(nsList, reportsummary):
                     'ready': "true",
                     'started': "true",
                     'restartCount': 0,
-                    'startedAt': ""
+                    'imageID': "",
+                    'startedAt': "",
+                    'actual' : "true"
                 }
                 log.debug("Container: {}".format(c['name']))
 
@@ -151,7 +153,9 @@ def getPods(nsList, reportsummary):
                         'ready': "false",
                         'started': "false",
                         'restartCount': 0,
-                        'startedAt': ""
+                        'imageID': "",
+                        'startedAt': "",
+                        'actual' : "true"
                     }
                     log.debug("initContainer: {}".format(c['name']))
                     containersList[f'{container["name"]}::{c["image"]}'] = c
@@ -173,7 +177,8 @@ def getPods(nsList, reportsummary):
                             ('imageID', containerStatus['imageID']),
                             ('startedAt', startedAt),
                         ])
-
+    pprint.pprint(containersList.keys())
+    #sys.exit()
     return podsList, containersList
 
 def getImages(containersList):
