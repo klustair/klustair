@@ -215,13 +215,16 @@ def linkImagesToContainers(uniqueImagesList,containersList):
                 containerHasImage.append(containerImage)
 
                 contianerID = f'{container["name"]}::{container["image"]}'
-                if 'imageID' in container and 'image_digest' in image: 
-                    if container['imageID'].find(image['image_digest']) != -1:
-                        containersList[contianerID]['actual'] = "true"
+                if contianerID in containersList:
+                    if 'imageID' in container and 'image_digest' in image: 
+                        if container['imageID'].find(image['image_digest']) != -1:
+                            containersList[contianerID]['actual'] = "true"
+                        else:
+                            containersList[contianerID]['actual'] = "false"
                     else:
-                        containersList[contianerID]['actual'] = "false"
+                        containersList[contianerID]['actual'] = "true"
                 else:
-                    containersList[contianerID]['actual'] = "true"
+                    log.error("Container {} not found in containersList".format(contianerID))
     
     return containerHasImage
 
