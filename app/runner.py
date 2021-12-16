@@ -133,7 +133,7 @@ def getPods(nsList, reportsummary):
                 log.debug("Container: {}".format(c['name']))
 
                 #pprint.pprint(container)
-                containersList[c['name']] = c
+                containersList[f'{container["name"]}::{c["image"]}'] = c
 
             if 'initContainers' in pod['spec']:
                 for initContainer in pod['spec']['initContainers']:
@@ -154,18 +154,19 @@ def getPods(nsList, reportsummary):
                         'startedAt': ""
                     }
                     log.debug("initContainer: {}".format(c['name']))
-                    containersList[c['name']] = c
+                    containersList[f'{container["name"]}::{c["image"]}'] = c
 
             if 'containerStatuses' in pod['status']:
                 for containerStatus in pod['status']['containerStatuses']:
-                    if containerStatus['name'] in containersList:
+                    containerID = f'{containerStatus["name"]}::{containerStatus["image"]}'
+                    if containerID in containersList:
                         if 'state' in containerStatus and 'running' in containerStatus['state']:
                             startedAt = containerStatus['state']['running']['startedAt']
                         else: 
                             startedAt = ''
                         
 
-                        containersList[containerStatus['name']].update([
+                        containersList[containerID].update([
                             ('ready', str(containerStatus['ready'])),
                             ('started', str(containerStatus['started'])),
                             ('restartCount', containerStatus['restartCount']),
@@ -212,13 +213,15 @@ def linkImagesToContainers(uniqueImagesList,containersList):
                     'image_uid': image_uid
                 }
                 containerHasImage.append(containerImage)
+
+                contianerID = f'{container["name"]}::{container["image"]}'
                 if 'imageID' in container and 'image_digest' in image: 
                     if container['imageID'].find(image['image_digest']) != -1:
-                        containersList[container['name']]['actual'] = "true"
+                        containersList[contianerID]['actual'] = "true"
                     else:
-                        containersList[container['name']]['actual'] = "false"
+                        containersList[contianerID]['actual'] = "false"
                 else:
-                    containersList[container['name']]['actual'] = "true"
+                    containersList[contianerID]['actual'] = "true"
     
     return containerHasImage
 
