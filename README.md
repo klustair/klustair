@@ -1,19 +1,19 @@
-<p align="center"><img src="https://raw.githubusercontent.com/mms-gianni/klustair-frontend/master/docs/img/klustair.png" width="200"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/klustair/klustair-frontend/master/docs/img/klustair.png" width="200"></p>
 
-# <a href='https://github.com/mms-gianni/klustair'>KlustAIR Scanner</a>
+# <a href='https://github.com/klustair/klustair'>KlustAIR Scanner</a>
 The Klustair scanner scanns your Kubernetes namespaces for the used images and submits them to Anchore. This is the scanner part. 
 
 <p>
 <span style="color:red">
 <b>INFORMATION</b>
-This runner is deprecated in favor of the new klustair-cli. For Klustair newer than v0.6.0 please use the <a href="https://github.com/mms-gianni/klustair-cli">klustair-cli</a> written in GO. 
+This runner is deprecated in favor of the new klustair-cli. For Klustair newer than v0.6.0 please use the <a href="https://github.com/klustair/klustair-cli">klustair-cli</a> written in GO. 
 </span>
 </p>
 <br>
 
 ### Related Klustair projects: 
-- <a href="https://github.com/mms-gianni/klustair-frontend">Klustair Frontend</a> to view the scanner results
-- <a href="https://github.com/mms-gianni/klustair-helm">Klustair Helm charts</a> to spin up Anchore and Klustair
+- <a href="https://github.com/klustair/klustair-frontend">Klustair Frontend</a> to view the scanner results
+- <a href="https://github.com/klustair/klustair-helm">Klustair Helm charts</a> to spin up Anchore and Klustair
 
 ### Related opensource projects
 - <a href="https://github.com/aquasecurity/trivy">trivy</a> A Simple and Comprehensive Vulnerability Scanner for Containers and other Artifacts
