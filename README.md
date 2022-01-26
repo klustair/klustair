@@ -3,6 +3,14 @@
 # <a href='https://github.com/mms-gianni/klustair'>KlustAIR Scanner</a>
 The Klustair scanner scanns your Kubernetes namespaces for the used images and submits them to Anchore. This is the scanner part. 
 
+<p>
+<span style="color:red">
+<b>INFORMATION</b>
+This runner is deprecated in favor of the new klustair-cli. For Klustair newer than v0.6.0 please use the <a href="https://github.com/mms-gianni/klustair-cli">klustair-cli</a> written in GO. 
+</span>
+</p>
+<br>
+
 ### Related Klustair projects: 
 - <a href="https://github.com/mms-gianni/klustair-frontend">Klustair Frontend</a> to view the scanner results
 - <a href="https://github.com/mms-gianni/klustair-helm">Klustair Helm charts</a> to spin up Anchore and Klustair
