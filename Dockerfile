@@ -1,4 +1,4 @@
-FROM python:3.10-alpine
+FROM python:3.12.0a1-alpine
 
 ARG KUBECTL_VERSION="v1.17.0"
 ENV KUBECONFIG="/kube.config"
